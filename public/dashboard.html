@@ -1206,8 +1206,8 @@
                 this.currentProfile = type || 'Car';
 
                 if (this.currentProfile === 'Person') {
-                    // Human Profile: 100% exact tracking
-                    this.MIN_DISTANCE = 0;             // Plot every single point
+                    // Human Profile: Smooth tracking, ignoring < 2m jitter
+                    this.MIN_DISTANCE = 2;             // Ignore noise under 2 meters
                     this.STATIONARY_SPEED = 0.2;       
                     this.STATIONARY_TIME = 5000;       
                     this.EXIT_STATIONARY_DIST = 2;     
@@ -1215,8 +1215,8 @@
                     this.SMOOTHING = 1.0;              // 1.0 = No lagging/drifting behind the raw point
                     this.ANIMATION_MS = 1500;          // Fast, precise snap
                 } else {
-                    // Vehicle Profile: 100% exact tracking
-                    this.MIN_DISTANCE = 0;             
+                    // Vehicle Profile: Smooth tracking, ignoring < 2m jitter
+                    this.MIN_DISTANCE = 2;             // Ignore noise under 2 meters
                     this.STATIONARY_SPEED = 0.4;       
                     this.STATIONARY_TIME = 3000;       
                     this.EXIT_STATIONARY_DIST = 5;    
