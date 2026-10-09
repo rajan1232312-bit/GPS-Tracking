@@ -143,7 +143,7 @@ tcpServer.listen(TCP_PORT, () => {
 
 
 // --- WebSocket (HTTP) Server ---
-const HTTP_PORT = process.env.HTTP_PORT || 5001;
+const HTTP_PORT = process.env.PORT || process.env.HTTP_PORT || 5001;
 const app = express();
 const httpServer = http.createServer(app);
 
@@ -160,6 +160,77 @@ app.use(express.static('public'));
 app.use(express.json()); // Enable JSON parsing for API requests
 
 // --- REST API Endpoints ---
+
+// Hardware HTTP Tracker Endpoint (For Render compatibility)
+app.post('/api/tracker/update', (req, res) => {
+    const payload = req.body;
+    
+    if (payload && payload.device_uid && payload.name) {
+        const { device_uid, name, lat, lon, speed, battery } = payload;
+
+        db.get(`SELECT * FROM devices WHERE device_uid = ? AND name = ? AND status = 'Active'`, [device_uid, name], (err, row) => {
+            if (err) return res.status(500).json({ error: 'DB Error' });
+
+            if (row) {
+                console.log(`Security Validation Passed (HTTP): Device ${name} (${device_uid})`);
+                
+                let latitude = parseFloat(lat);
+                let longitude = parseFloat(lon);
+                const speedVal = parseFloat(speed);
+                const battery_percentage = parseInt(battery, 10);
+
+                const now = Date.now();
+                let shouldSaveToDb = false;
+
+                if (!deviceStateCache.has(device_uid)) {
+                    shouldSaveToDb = true;
+                } else {
+                    const lastState = deviceStateCache.get(device_uid);
+                    const timeDiff = now - lastState.lastSaveTime;
+                    const distDiff = getDistanceFromLatLonInMeters(lastState.lat, lastState.lon, latitude, longitude);
+                    
+                    if (timeDiff >= 10000 || distDiff >= 10) {
+                        shouldSaveToDb = true;
+                    }
+                }
+
+                const eventData = {
+                    id: device_uid,
+                    name: name,
+                    lat: latitude,
+                    lon: longitude,
+                    speed: speedVal,
+                    battery: battery_percentage,
+                    type: row.type || 'Car',
+                    timestamp: new Date().toISOString()
+                };
+                io.emit('device_moved', eventData);
+
+                if (shouldSaveToDb) {
+                    deviceStateCache.set(device_uid, {
+                        lat: latitude,
+                        lon: longitude,
+                        lastSaveTime: now
+                    });
+
+                    db.run(`INSERT INTO telemetry_logs (device_uid, latitude, longitude, speed, battery_percentage) VALUES (?, ?, ?, ?, ?)`, 
+                        [device_uid, latitude, longitude, speedVal, battery_percentage]);
+
+                    db.run(`UPDATE devices SET last_seen = CURRENT_TIMESTAMP, battery_percentage = ?, last_lat = ?, last_lon = ? WHERE device_uid = ?`, 
+                        [battery_percentage, latitude, longitude, device_uid]);
+                    
+                    console.log(`[DB SAVE] Decimated data saved to disk for ${name} via HTTP`);
+                }
+
+                return res.send(`ACK,${device_uid}#\n`);
+            } else {
+                return res.status(401).send('Security Validation Failed');
+            }
+        });
+    } else {
+        return res.status(400).send('Invalid payload');
+    }
+});
 
 // Register a new device
 app.post('/api/devices/register', (req, res) => {
