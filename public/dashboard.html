@@ -1177,10 +1177,38 @@
         // ========================================================
         // Premium Smooth Tracking Architecture (Leaflet Adapted)
         // ========================================================
+        
+        // 1. Kalman Filter for Predictive GPS Smoothing
+        class SimpleKalmanFilter {
+            constructor(r = 0.00005, q = 0.00001) {
+                this.r = r; // Measurement noise (expected GPS error in degrees, ~5m)
+                this.q = q; // Process noise (expected actual movement)
+                this.p = 1; // Estimation error covariance
+                this.x = null; // Predicted value
+            }
+            filter(measurement) {
+                if (this.x === null) {
+                    this.x = measurement;
+                } else {
+                    // Prediction
+                    this.p = this.p + this.q;
+                    // Update
+                    let k = this.p / (this.p + this.r);
+                    this.x = this.x + k * (measurement - this.x);
+                    this.p = (1 - k) * this.p;
+                }
+                return this.x;
+            }
+        }
+
         class SmoothLeafletTracker {
             constructor(map, marker) {
                 this.map = map;
                 this.marker = marker;
+                
+                // Initialize Independent Kalman Filters for Lat and Lng
+                this.kalmanLat = new SimpleKalmanFilter();
+                this.kalmanLng = new SimpleKalmanFilter();
 
                 this.lastValidPos = null;
                 this.isFirstFix = true;
@@ -1229,12 +1257,16 @@
             onGpsUpdate(raw) {
                 this.applyProfile(raw.type);
 
-                const lat = parseFloat(raw.lat);
-                const lng = parseFloat(raw.lng !== undefined ? raw.lng : raw.lon);
+                const rawLat = parseFloat(raw.lat);
+                const rawLng = parseFloat(raw.lng !== undefined ? raw.lng : raw.lon);
                 const accuracy = parseFloat(raw.accuracy || 10);
                 const timestamp = raw.timestamp ? new Date(raw.timestamp).getTime() : Date.now();
 
-                if (!this.isValidPoint(lat, lng, accuracy, timestamp)) return;
+                if (!this.isValidPoint(rawLat, rawLng, accuracy, timestamp)) return;
+
+                // 2. Apply Kalman Filter to gracefully smooth the raw GPS coordinates
+                const lat = this.kalmanLat.filter(rawLat);
+                const lng = this.kalmanLng.filter(rawLng);
 
                 const newPos = { lat, lng, timestamp };
 
@@ -1319,8 +1351,9 @@
                 const animate = (now) => {
                     const progress = Math.min((now - startTime) / duration, 1);
                     
-                    // Linear interpolation is REQUIRED for continuous GPS streams. 
-                    // Easing (cubic) causes "stop-and-go" rubber-banding at every waypoint.
+                    // 3. Spline-like trajectory: The Kalman filter above mathematically pulls 
+                    // the waypoints into a natural curve. We use linear time interpolation 
+                    // so the pointer glides continuously along this curve without stopping.
                     const ease = progress; 
 
                     const lat = start.lat + (target.lat - start.lat) * ease;
