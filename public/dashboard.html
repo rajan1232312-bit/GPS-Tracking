@@ -1253,8 +1253,8 @@
 
                 // ====================== ADVANCED HEADING LOCK ======================
                 // GPS jitter at low speeds causes wild pointer spinning. 
-                // We lock the heading if the vehicle is moving slower than 1.5 m/s (~5.4 km/h)
-                if (speed > 1.5) {
+                // We lock the heading if the vehicle is moving slower than 0.8 m/s (~2.8 km/h) to improve responsiveness
+                if (speed > 0.8) {
                     newPos.heading = this.calculateBearing(this.lastValidPos, newPos);
                 } else {
                     newPos.heading = this.lastValidPos.heading || 0;
@@ -1312,8 +1312,9 @@
                 let dt_ms = target.timestamp - start.timestamp;
                 if (isNaN(dt_ms) || dt_ms <= 0) dt_ms = 1000; 
                 
-                // Perfectly match the animation duration to the transmission rate for flawless continuous motion
-                let duration = Math.max(100, Math.min(dt_ms, 2000));
+                // Better match the animation duration to the transmission rate for flawless continuous motion
+                // Increased max to 5000ms to prevent stop-and-go lag on slower update intervals
+                let duration = Math.max(100, Math.min(dt_ms, 5000));
 
                 const animate = (now) => {
                     const progress = Math.min((now - startTime) / duration, 1);
