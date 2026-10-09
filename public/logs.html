@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Logs - Real-Time GPS Tracker</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --text-color: #f8fafc;
+            --accent: #3b82f6;
+            --success: #10b981;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            background-image: radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05), transparent 40%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header h1 i {
+            color: var(--accent);
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .logs-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            max-height: 75vh;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 22px 24px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #f8fafc;
+            font-weight: 700;
+            border-bottom: 2px solid var(--accent);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        td {
+            padding: 16px 24px;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: #cbd5e1;
+        }
+
+        tr {
+            transition: background 0.2s ease;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .uid-badge {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            letter-spacing: 0.5px;
+        }
+
+        .coord {
+            font-family: monospace;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+        }
+        
+        .empty-state {
+            padding: 80px 20px;
+            text-align: center;
+            color: #64748b;
+        }
+        
+        .empty-state i {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .pulse-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(0.95); opacity: 1; }
+        }
+        
+        .new-row {
+            animation: highlightRow 2.5s ease-out forwards;
+        }
+        
+        @keyframes highlightRow {
+            0% { background: rgba(59, 130, 246, 0.25); }
+            100% { background: transparent; }
+        }
+
+        /* Scrollbar styles for the table */
+        .table-responsive::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .table-responsive::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Premium Filter Styling */
+        .filter-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-icon {
+            position: absolute;
+            left: 14px;
+            color: #94a3b8;
+            pointer-events: none;
+            font-size: 0.95rem;
+            z-index: 2;
+        }
+
+        .aesthetic-select {
+            appearance: none;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #f8fafc;
+            padding: 10px 38px 10px 42px;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            /* Custom dropdown arrow */
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+        }
+
+        .aesthetic-select:hover, .aesthetic-select:focus {
+            border-color: var(--accent);
+            background: rgba(15, 23, 42, 0.85);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .aesthetic-select option {
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 10px;
+        }
+
+        /* Pagination CSS */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        .pagination-info {
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pagination-buttons .nav-btn {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+        
+        .pagination-buttons .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fa-solid fa-list-ul"></i> System Telemetry Logs</h1>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="filter-container">
+                    <i class="fa-solid fa-filter filter-icon"></i>
+                    <select id="device-filter" class="aesthetic-select" onchange="applyFilter()">
+                        <option value="all">All Devices (Total)</option>
+                    </select>
+                </div>
+                <a href="/dashboard.html" class="nav-btn">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Map
+                </a>
+            </div>
+        </div>
+
+        <div class="logs-card">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Device Name</th>
+                            <th>Device UID</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-body">
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                <p>Loading telemetry logs...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Premium Pagination Controls -->
+            <div class="pagination-container" id="pagination-container" style="display: none;">
+                <div class="pagination-info" id="pagination-info">Total Logs: <strong>0</strong></div>
+                <div class="pagination-buttons">
+                    <button class="nav-btn" id="prev-page-btn" onclick="changePage(-1)" disabled><i class="fa-solid fa-chevron-left"></i> Previous</button>
+                    <span id="page-indicator" style="color: #f8fafc; font-weight: 600; font-size: 0.95rem; padding: 0 10px;">Page 1</span>
+                    <button class="nav-btn" id="next-page-btn" onclick="changePage(1)"><i class="fa-solid fa-chevron-right"></i> Next</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Socket.io for Real-time Updates -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const logsBody = document.getElementById('logs-body');
+        const deviceFilter = document.getElementById('device-filter');
+        let allLogs = [];
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // Format Date to nice readable format
+        function formatDateTime(dateString) {
+            const date = new Date(dateString + (dateString.endsWith('Z') ? '' : 'Z'));
+            if (isNaN(date)) return 'Unknown';
+            const day = String(date.getDate()).padStart(2, '0');
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const month = monthNames[date.getMonth()];
+            const year = date.getFullYear();
+            let hours = date.getHours();
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
+        }
+
+        // Create a table row
+        function createRowHtml(log, isNew = false) {
+            return `
+                <tr class="${isNew ? 'new-row' : ''}">
+                    <td><span class="pulse-dot"></span></td>
+                    <td style="font-weight: 500; color: #f8fafc;">${log.device_name || 'Unknown Device'}</td>
+                    <td><span class="uid-badge">${log.device_uid}</span></td>
+                    <td class="coord">${parseFloat(log.latitude).toFixed(5)}</td>
+                    <td class="coord">${parseFloat(log.longitude).toFixed(5)}</td>
+                    <td>${formatDateTime(log.timestamp)}</td>
+                </tr>
+            `;
+        }
+
+        async function fetchDeviceList() {
+            try {
+                const response = await fetch('/api/devices');
+                const devices = await response.json();
+                devices.forEach(d => {
+                    const option = document.createElement('option');
+                    option.value = d.device_uid;
+                    option.textContent = d.name || d.device_uid;
+                    deviceFilter.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Failed to load device list for filter", err);
+            }
+        }
+
+        function renderLogs(logsToRender) {
+            if (logsToRender && logsToRender.length > 0) {
+                logsBody.innerHTML = logsToRender.map(log => createRowHtml(log)).join('');
+            } else {
+                logsBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <i class="fa-solid fa-inbox"></i>
+                            <p>No telemetry logs found for this selection.</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function applyFilter() {
+            currentPage = 1; // Reset to page 1 when filter changes
+            fetchLogs();
+        }
+        
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                fetchLogs();
+            }
+        }
+
+        // Fetch historical logs
+        async function fetchLogs() {
+            try {
+                const uid = deviceFilter.value || 'all';
+                const response = await fetch(`/api/logs/all?page=${currentPage}&limit=50&device_uid=${uid}`);
+                const result = await response.json();
+                
+                const data = result.data || [];
+                currentPage = result.page || 1;
+                totalPages = result.totalPages || 1;
+                const totalLogs = result.total || 0;
+                
+                if (data && data.length > 0) {
+                    allLogs = data;
+                    renderLogs(data);
+                    
+                    // Show and update pagination UI
+                    document.getElementById('pagination-container').style.display = 'flex';
+                    document.getElementById('page-indicator').textContent = `Page ${currentPage} of ${totalPages}`;
+                    document.getElementById('pagination-info').innerHTML = `Total Logs: <strong style="color: #f8fafc;">${totalLogs}</strong>`;
+                    document.getElementById('prev-page-btn').disabled = currentPage <= 1;
+                    document.getElementById('next-page-btn').disabled = currentPage >= totalPages;
+                } else {
+                    renderLogs([]);
+                    document.getElementById('pagination-container').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+                logsBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state" style="color: #ef4444;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <p>Error loading logs. Make sure the backend server is running.</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Initial fetch
+        fetchDeviceList();
+        fetchLogs();
+
+        // Listen for Real-Time Updates
+        const socket = io();
+        socket.on('device_moved', (data) => {
+            const newLog = {
+                device_uid: data.id,
+                device_name: data.name || ('Device ' + data.id),
+                latitude: data.lat,
+                longitude: data.lon,
+                timestamp: data.timestamp
+            };
+            
+            const selectedUid = deviceFilter.value;
+            
+            // Only update DOM dynamically if we are currently looking at Page 1 and the filter matches
+            if (currentPage === 1 && (selectedUid === 'all' || selectedUid === newLog.device_uid)) {
+                allLogs.unshift(newLog);
+                
+                if (logsBody.querySelector('.empty-state')) {
+                    logsBody.innerHTML = '';
+                    document.getElementById('pagination-container').style.display = 'flex';
+                }
+                
+                logsBody.insertAdjacentHTML('afterbegin', createRowHtml(newLog, true));
+                
+                // Maintain a cap of 50 items per page to prevent infinite scrolling on page 1
+                if (logsBody.children.length > 50) {
+                    logsBody.removeChild(logsBody.lastChild);
+                    allLogs.pop();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+node_modules/
+.env
+*.db
+*.sqlite
+database.sqlite
+db.sqlite
+gps_backend.db
+
+# Temporary logs and downloads from our testing
+cloudflared
+cloudflared-linux-amd64
+*.log
+temp*.js

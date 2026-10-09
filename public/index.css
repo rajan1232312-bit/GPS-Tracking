@@ -1,0 +1,41 @@
+
+/* Delete Button */
+.edit-btn, .delete-btn {
+    margin-left: auto;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.edit-btn:hover {
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.delete-btn {
+    margin-left: 4px;
+}
+
+.delete-btn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.edit-btn:active, .delete-btn:active { transform: scale(0.95); opacity: 0.8; }
+
+@keyframes online-pulse {
+    0% { filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.4)); opacity: 0.8; }
+    50% { filter: drop-shadow(0 0 12px rgba(59, 130, 246, 1)); opacity: 1; transform: scale(1.05); }
+    100% { filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.4)); opacity: 0.8; }
+}
+
+.marker-online svg {
+    animation: online-pulse 1.5s infinite ease-in-out;
+}
+
+.marker-offline svg {
+    opacity: 0.5;
+    filter: grayscale(80%);
+}

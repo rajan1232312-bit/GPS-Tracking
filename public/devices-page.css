@@ -1,0 +1,87 @@
+#devices-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 500;
+    background-color: var(--bg-color);
+    display: none; /* Hidden by default */
+    padding: 40px 40px 40px 380px;
+    overflow-y: auto;
+    color: #fff;
+}
+
+#devices-page.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+}
+
+/* Data Table Styles */
+.devices-table-container {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+}
+
+.devices-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+.devices-table th {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.devices-table td {
+    padding: 20px 24px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+}
+
+.devices-table tr:last-child td {
+    border-bottom: none;
+}
+
+.devices-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Status Badge */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-badge.online {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.status-badge.offline {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}

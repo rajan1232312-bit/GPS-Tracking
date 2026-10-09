@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Vehicle Tracker - Premium Registration</title>
+    <!-- Modern Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: transparent;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-main: #171717;
+            --text-muted: #737373;
+            --accent-green: #dcfc72;
+            --accent-green-hover: #cbf056;
+            --dark-btn: #171717;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --input-bg: rgba(255, 255, 255, 0.6);
+            --focus-ring: rgba(23, 23, 23, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            background-color: transparent;
+            color: var(--text-main);
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Background Image setup */
+        .bg-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: -2;
+        }
+        
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+        }
+
+        /* Glassmorphism Container */
+        .register-wrapper {
+            width: 100%;
+            max-width: 500px; /* Slightly wider for two columns */
+            padding: 24px;
+            z-index: 10;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            justify-content: center;
+            animation: fadeDown 0.8s ease-out forwards;
+        }
+
+        .logo-icon {
+            background-color: var(--dark-btn);
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+
+        .logo-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: none;
+            stroke: var(--accent-green);
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: #ffffff;
+        }
+
+        .register-card {
+            background: var(--card-bg);
+            border-radius: 28px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 1);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            animation: scaleUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .register-header {
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .register-header h1 {
+            font-family: 'Outfit', sans-serif;
+            margin: 0 0 8px 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--dark-btn);
+        }
+
+        .register-header p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 20px;
+            flex: 1;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 20px 16px 10px 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            font-size: 1rem;
+            font-family: inherit;
+            color: var(--text-main);
+            box-sizing: border-box;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .input-wrapper label {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            color: var(--text-muted);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            transform-origin: left top;
+        }
+
+        .input-wrapper input:focus,
+        .input-wrapper input:not(:placeholder-shown) {
+            outline: none;
+            border-color: var(--dark-btn);
+            background-color: #ffffff;
+            box-shadow: 0 0 0 4px var(--focus-ring);
+        }
+
+        .input-wrapper input:focus + label,
+        .input-wrapper input:not(:placeholder-shown) + label {
+            top: 12px;
+            transform: translateY(-50%) scale(0.75);
+            font-weight: 600;
+            color: var(--dark-btn);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+            z-index: 2;
+        }
+
+        .password-toggle:hover { color: var(--dark-btn); }
+
+        .password-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Password Strength Meter */
+        .password-strength-container {
+            margin-top: 8px;
+            padding: 0 4px;
+        }
+        
+        .strength-bars {
+            display: flex;
+            gap: 4px;
+            height: 4px;
+            margin-bottom: 6px;
+        }
+        
+        .strength-bar {
+            flex: 1;
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .strength-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            border: none;
+            background-color: var(--accent-green);
+            color: var(--dark-btn);
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 24px;
+            box-shadow: 0 4px 12px rgba(220, 252, 114, 0.4);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--accent-green-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(220, 252, 114, 0.6);
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 32px;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.8);
+            animation: fadeDown 0.8s ease-out 0.2s forwards;
+            opacity: 0;
+        }
+
+        .footer-text a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+        
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Custom Dropdown Styling */
+        .custom-select {
+            position: relative;
+        }
+        
+        .custom-select .chevron {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            transition: transform 0.3s ease;
+        }
+
+        .custom-select.open .chevron {
+            transform: translateY(-50%) rotate(180deg);
+        }
+
+        .select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 6px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.1);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .custom-select.open .select-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .select-option {
+            padding: 14px 16px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: background 0.2s ease, padding-left 0.2s ease;
+        }
+
+        .select-option:hover {
+            background: rgba(0,0,0,0.04);
+            font-weight: 500;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-image"></div>
+    <div class="bg-overlay"></div>
+
+    <div class="register-wrapper">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path>
+                    <path d="M12 6.5l-3 6.5 3-1.5 3 1.5-3-6.5z"></path>
+                </svg>
+            </div>
+            <div class="logo-text">GPS Vehicle Tracker</div>
+        </div>
+
+        <div class="register-card">
+            <div class="register-header">
+                <h1>Create an Account</h1>
+                <p>Register to access the professional tracking system</p>
+            </div>
+
+            <form onsubmit="event.preventDefault(); window.location.href='/dashboard.html';">
+                
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <input type="text" id="fullname" placeholder=" " required>
+                        <label for="fullname">Full Name</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <div class="input-wrapper">
+                            <input type="number" id="age" placeholder=" " required min="18" max="100">
+                            <label for="age">Age</label>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <div class="input-wrapper custom-select">
+                            <input type="text" id="gender" placeholder=" " required readonly class="select-trigger" style="cursor: pointer;">
+                            <label for="gender">Gender</label>
+                            <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <div class="select-dropdown">
+                                <div class="select-option" data-value="male">Male</div>
+                                <div class="select-option" data-value="female">Female</div>
+                                <div class="select-option" data-value="other">Other</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <input type="email" id="email" placeholder=" " required>
+                        <label for="email">Registered Email</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="input-wrapper custom-select">
+                        <input type="text" id="role" placeholder=" " required readonly class="select-trigger" style="cursor: pointer;">
+                        <label for="role">Role</label>
+                        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <div class="select-dropdown">
+                            <div class="select-option" data-value="admin">Admin</div>
+                            <div class="select-option" data-value="manager">Manager</div>
+                            <div class="select-option" data-value="user">Standard User</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <input type="text" id="userid" placeholder=" " required minlength="4">
+                        <label for="userid">User ID</label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <div class="input-wrapper">
+                        <input type="password" id="password" placeholder=" " required style="padding-right: 48px;" minlength="8" maxlength="32" oninput="checkPasswordStrength(this.value)">
+                        <label for="password">Create New Password</label>
+                        <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Toggle password visibility">
+                            <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path>
+                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="password-strength-container">
+                        <div class="strength-bars">
+                            <div class="strength-bar" id="bar-1"></div>
+                            <div class="strength-bar" id="bar-2"></div>
+                            <div class="strength-bar" id="bar-3"></div>
+                            <div class="strength-bar" id="bar-4"></div>
+                        </div>
+                        <div class="strength-text" id="strength-text">Use 8+ characters with a mix of letters, numbers & symbols.</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    Register Account
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </button>
+            </form>
+        </div>
+        
+        <div class="footer-text">
+            Already have an account? <a href="/index.html">Log in here</a>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.custom-select').forEach(wrapper => {
+            const trigger = wrapper.querySelector('.select-trigger');
+            const options = wrapper.querySelectorAll('.select-option');
+            
+            trigger.addEventListener('click', (e) => {
+                document.querySelectorAll('.custom-select').forEach(w => {
+                    if(w !== wrapper) w.classList.remove('open');
+                });
+                wrapper.classList.toggle('open');
+                e.stopPropagation();
+            });
+
+            options.forEach(opt => {
+                opt.addEventListener('click', () => {
+                    trigger.value = opt.textContent;
+                    wrapper.classList.remove('open');
+                });
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.custom-select').forEach(w => w.classList.remove('open'));
+        });
+
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eye-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.innerHTML = '<path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"></path>';
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.innerHTML = '<path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>';
+            }
+        }
+
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            const bar1 = document.getElementById('bar-1');
+            const bar2 = document.getElementById('bar-2');
+            const bar3 = document.getElementById('bar-3');
+            const bar4 = document.getElementById('bar-4');
+            const text = document.getElementById('strength-text');
+            
+            // Reset colors
+            [bar1, bar2, bar3, bar4].forEach(bar => bar.style.backgroundColor = 'rgba(0,0,0,0.1)');
+            
+            if (password.length === 0) {
+                text.textContent = 'Use 8+ characters with a mix of letters, numbers & symbols.';
+                text.style.color = 'var(--text-muted)';
+                return;
+            }
+
+            // Criteria checks
+            if (password.length >= 8) strength += 1;
+            if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength += 1;
+            if (password.match(/\d/)) strength += 1;
+            if (password.match(/[^a-zA-Z\d]/)) strength += 1;
+
+            if (strength === 1) {
+                bar1.style.backgroundColor = '#ef4444'; // Red (Weak)
+                text.textContent = 'Weak: Add upper/lowercase, numbers & symbols.';
+                text.style.color = '#ef4444';
+            } else if (strength === 2) {
+                bar1.style.backgroundColor = '#eab308'; // Yellow (Fair)
+                bar2.style.backgroundColor = '#eab308';
+                text.textContent = 'Fair: Keep adding variety.';
+                text.style.color = '#eab308';
+            } else if (strength === 3) {
+                bar1.style.backgroundColor = '#3b82f6'; // Blue (Good)
+                bar2.style.backgroundColor = '#3b82f6';
+                bar3.style.backgroundColor = '#3b82f6';
+                text.textContent = 'Good: Just one more element to make it strong.';
+                text.style.color = '#3b82f6';
+            } else if (strength === 4) {
+                bar1.style.backgroundColor = '#22c55e'; // Green (Strong)
+                bar2.style.backgroundColor = '#22c55e';
+                bar3.style.backgroundColor = '#22c55e';
+                bar4.style.backgroundColor = '#22c55e';
+                text.textContent = 'Strong password! Highly secure.';
+                text.style.color = '#22c55e';
+            }
+        }
+    </script>
+</body>
+</html>
