@@ -225,19 +225,21 @@
 
         .aesthetic-select {
             appearance: none;
-            background: rgba(15, 23, 42, 0.6);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-color: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(59, 130, 246, 0.4);
             color: #f8fafc;
-            padding: 10px 38px 10px 42px;
+            padding: 10px 42px 10px 42px;
             border-radius: 12px;
             font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
             font-weight: 500;
             cursor: pointer;
             outline: none;
-            transition: all 0.3s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             /* Custom dropdown arrow */
             background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
@@ -246,10 +248,15 @@
             background-size: 16px;
         }
 
-        .aesthetic-select:hover, .aesthetic-select:focus {
+        .aesthetic-select:hover, .aesthetic-select:focus, .aesthetic-select:active {
             border-color: var(--accent);
-            background: rgba(15, 23, 42, 0.85);
+            background-color: rgba(15, 23, 42, 0.9);
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            /* Preserve dropdown arrow consistently across focus/hover/select */
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
         }
 
         .aesthetic-select option {
@@ -393,14 +400,9 @@
                     </select>
                 </div>
 
-                <!-- Vitals Dashboard Link -->
-                <a href="/vitals.html" class="nav-btn" style="background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.3); color: #fda4af;">
-                    <i class="fa-solid fa-heart-pulse"></i> Vitals Dashboard
-                </a>
-
-                <!-- Back to Map -->
+                <!-- Back to Dashboard -->
                 <a href="/dashboard.html" class="nav-btn">
-                    <i class="fa-solid fa-arrow-left"></i> Back to Map
+                    <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
                 </a>
             </div>
         </div>
@@ -595,15 +597,36 @@
             }
         }
 
+        let activeFetchId = 0;
+
+        // Immediately clear old rows and display loading state during type switch or filter
+        function showLoadingState() {
+            const colCount = currentLogType === 'vitals' ? 8 : 6;
+            const typeLabel = currentLogType === 'vitals' ? 'Health Vitals' : 'GPS Telemetry';
+            logsBody.innerHTML = `
+                <tr>
+                    <td colspan="${colCount}" class="empty-state" style="padding: 70px 20px;">
+                        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2.2rem; color: ${currentLogType === 'vitals' ? '#f43f5e' : 'var(--accent)'}; margin-bottom: 14px; display: inline-block;"></i>
+                        <p style="color: #94a3b8; font-size: 0.95rem; font-weight: 500;">Loading ${typeLabel} logs...</p>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('pagination-container').style.display = 'none';
+        }
+
         function onLogTypeChange() {
             currentLogType = logTypeFilter.value;
+            logTypeFilter.blur();
             currentPage = 1;
             renderTableHeader();
+            showLoadingState();
             fetchLogs();
         }
 
         function applyFilter() {
+            deviceFilter.blur();
             currentPage = 1; // Reset to page 1 when device filter changes
+            showLoadingState();
             fetchLogs();
         }
         
@@ -611,18 +634,27 @@
             const newPage = currentPage + delta;
             if (newPage >= 1 && newPage <= totalPages) {
                 currentPage = newPage;
+                showLoadingState();
                 fetchLogs();
             }
         }
 
         // Fetch logs based on active log type & device filter
         async function fetchLogs() {
+            const fetchId = ++activeFetchId;
+            const requestedType = currentLogType;
+
             try {
                 const uid = deviceFilter.value || 'all';
-                const endpoint = currentLogType === 'vitals' ? '/api/logs/vitals' : '/api/logs/all';
+                const endpoint = requestedType === 'vitals' ? '/api/logs/vitals' : '/api/logs/all';
                 const response = await fetch(`${endpoint}?page=${currentPage}&limit=50&device_uid=${uid}`);
                 const result = await response.json();
                 
+                // If user switched log type or another fetch occurred in-between, discard stale response
+                if (fetchId !== activeFetchId || currentLogType !== requestedType) {
+                    return;
+                }
+
                 const data = result.data || [];
                 currentPage = result.page || 1;
                 totalPages = result.totalPages || 1;
@@ -643,6 +675,7 @@
                     document.getElementById('pagination-container').style.display = 'none';
                 }
             } catch (error) {
+                if (fetchId !== activeFetchId) return;
                 console.error('Error fetching logs:', error);
                 const colCount = currentLogType === 'vitals' ? 8 : 6;
                 logsBody.innerHTML = `

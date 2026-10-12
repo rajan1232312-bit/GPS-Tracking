@@ -117,6 +117,14 @@ const tcpServer = net.createServer((socket) => {
 
     socket.on('data', (data) => {
         const rawPacket = data.toString().trim();
+
+        // Handle cloud health-check probes (e.g. Render prober sending HEAD/GET to all open ports)
+        if (rawPacket.startsWith('HEAD ') || rawPacket.startsWith('GET ')) {
+            socket.write("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+            socket.end();
+            return;
+        }
+
         console.log('Received TCP Data:', rawPacket);
         
         let payload;
