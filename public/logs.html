@@ -292,20 +292,113 @@
             border-color: rgba(255, 255, 255, 0.05);
         }
 
+        /* Vitals Specific Badges & Indicators */
+        .bp-badge {
+            color: #fda4af;
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .spo2-badge {
+            color: #67e8f9;
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hr-badge {
+            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .steps-badge {
+            color: #6ee7b7;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Visual indicator for data fields that were not received in backend */
+        .empty-val {
+            color: #64748b;
+            background: rgba(100, 116, 139, 0.12);
+            border: 1px dashed rgba(100, 116, 139, 0.3);
+            padding: 3px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            display: inline-block;
+            letter-spacing: 1px;
+        }
+
+        .empty-val:hover {
+            color: #94a3b8;
+            border-color: rgba(148, 163, 184, 0.4);
+        }
+
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="header">
-            <h1><i class="fa-solid fa-list-ul"></i> System Telemetry Logs</h1>
-            <div style="display: flex; gap: 15px; align-items: center;">
+            <h1 id="page-title"><i class="fa-solid fa-list-ul"></i> System Telemetry Logs</h1>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                
+                <!-- Log Type Filter -->
                 <div class="filter-container">
-                    <i class="fa-solid fa-filter filter-icon"></i>
+                    <i class="fa-solid fa-layer-group filter-icon"></i>
+                    <select id="log-type-filter" class="aesthetic-select" onchange="onLogTypeChange()">
+                        <option value="telemetry">🛰️ GPS Telemetry Logs</option>
+                        <option value="vitals">🩺 Health Vitals Logs</option>
+                    </select>
+                </div>
+
+                <!-- Device Filter -->
+                <div class="filter-container">
+                    <i class="fa-solid fa-microchip filter-icon"></i>
                     <select id="device-filter" class="aesthetic-select" onchange="applyFilter()">
                         <option value="all">All Devices (Total)</option>
                     </select>
                 </div>
+
+                <!-- Vitals Dashboard Link -->
+                <a href="/vitals.html" class="nav-btn" style="background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.3); color: #fda4af;">
+                    <i class="fa-solid fa-heart-pulse"></i> Vitals Dashboard
+                </a>
+
+                <!-- Back to Map -->
                 <a href="/dashboard.html" class="nav-btn">
                     <i class="fa-solid fa-arrow-left"></i> Back to Map
                 </a>
@@ -315,21 +408,14 @@
         <div class="logs-card">
             <div class="table-responsive">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Status</th>
-                            <th>Device Name</th>
-                            <th>Device UID</th>
-                            <th>Latitude</th>
-                            <th>Longitude</th>
-                            <th>Timestamp</th>
-                        </tr>
+                    <thead id="logs-thead">
+                        <!-- Dynamic Header Rendered by renderTableHeader() -->
                     </thead>
                     <tbody id="logs-body">
                         <tr>
-                            <td colspan="6" class="empty-state">
+                            <td colspan="8" class="empty-state">
                                 <i class="fa-solid fa-circle-notch fa-spin"></i>
-                                <p>Loading telemetry logs...</p>
+                                <p>Loading logs...</p>
                             </td>
                         </tr>
                     </tbody>
@@ -352,16 +438,41 @@
     <!-- Socket.io for Real-time Updates -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        const logsThead = document.getElementById('logs-thead');
         const logsBody = document.getElementById('logs-body');
+        const logTypeFilter = document.getElementById('log-type-filter');
         const deviceFilter = document.getElementById('device-filter');
+        const pageTitle = document.getElementById('page-title');
+
+        let currentLogType = 'telemetry'; // 'telemetry' or 'vitals'
         let allLogs = [];
         let currentPage = 1;
         let totalPages = 1;
 
-        // Format Date to nice readable format
+        // Escape HTML to prevent XSS
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Format Date to nice readable format: DD/MMM/YYYY, hh:mm AM/PM
         function formatDateTime(dateString) {
-            const date = new Date(dateString + (dateString.endsWith('Z') ? '' : 'Z'));
-            if (isNaN(date)) return 'Unknown';
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString + (String(dateString).endsWith('Z') ? '' : 'Z'));
+            if (isNaN(date.getTime())) {
+                const fallbackDate = new Date(dateString);
+                if (isNaN(fallbackDate.getTime())) return 'Unknown';
+                return formatDirect(fallbackDate);
+            }
+            return formatDirect(date);
+        }
+
+        function formatDirect(date) {
             const day = String(date.getDate()).padStart(2, '0');
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             const month = monthNames[date.getMonth()];
@@ -374,18 +485,82 @@
             return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
         }
 
-        // Create a table row
+        // Render Adaptive Table Header
+        function renderTableHeader() {
+            if (currentLogType === 'vitals') {
+                pageTitle.innerHTML = `<i class="fa-solid fa-heart-pulse" style="color: #f43f5e;"></i> Health Vitals Logs`;
+                logsThead.innerHTML = `
+                    <tr>
+                        <th style="width: 70px;">Status</th>
+                        <th>Device Name</th>
+                        <th>Device UID</th>
+                        <th>Blood Pressure (BP)</th>
+                        <th>SpO2 (%)</th>
+                        <th>Heart Rate (BPM)</th>
+                        <th>Steps Count</th>
+                        <th>Timestamp</th>
+                    </tr>
+                `;
+            } else {
+                pageTitle.innerHTML = `<i class="fa-solid fa-list-ul" style="color: var(--accent);"></i> System Telemetry Logs`;
+                logsThead.innerHTML = `
+                    <tr>
+                        <th style="width: 70px;">Status</th>
+                        <th>Device Name</th>
+                        <th>Device UID</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Timestamp</th>
+                    </tr>
+                `;
+            }
+        }
+
+        // Create an adaptive table row
         function createRowHtml(log, isNew = false) {
-            return `
-                <tr class="${isNew ? 'new-row' : ''}">
-                    <td><span class="pulse-dot"></span></td>
-                    <td style="font-weight: 500; color: #f8fafc;">${log.device_name || 'Unknown Device'}</td>
-                    <td><span class="uid-badge">${log.device_uid}</span></td>
-                    <td class="coord">${parseFloat(log.latitude).toFixed(5)}</td>
-                    <td class="coord">${parseFloat(log.longitude).toFixed(5)}</td>
-                    <td>${formatDateTime(log.timestamp)}</td>
-                </tr>
-            `;
+            if (currentLogType === 'vitals') {
+                // If a vital metric is not received, render an empty/dashed indicator
+                const bpDisplay = (log.blood_pressure && log.blood_pressure !== '—/—')
+                    ? `<span class="bp-badge"><i class="fa-solid fa-heart-pulse"></i> ${escapeHtml(log.blood_pressure)}</span>`
+                    : `<span class="empty-val" title="Not Received">—</span>`;
+
+                const spo2Display = (log.spo2 !== null && log.spo2 !== undefined && log.spo2 !== '')
+                    ? `<span class="spo2-badge"><i class="fa-solid fa-droplet"></i> ${parseFloat(log.spo2).toFixed(1)}%</span>`
+                    : `<span class="empty-val" title="Not Received">—</span>`;
+
+                const hrDisplay = (log.heart_rate !== null && log.heart_rate !== undefined && log.heart_rate !== '')
+                    ? `<span class="hr-badge"><i class="fa-solid fa-heart"></i> ${log.heart_rate} bpm</span>`
+                    : `<span class="empty-val" title="Not Received">—</span>`;
+
+                const rawSteps = log.steps !== undefined ? log.steps : log.step_count;
+                const stepsDisplay = (rawSteps !== null && rawSteps !== undefined && rawSteps !== '')
+                    ? `<span class="steps-badge"><i class="fa-solid fa-person-walking"></i> ${Number(rawSteps).toLocaleString()}</span>`
+                    : `<span class="empty-val" title="Not Received">—</span>`;
+
+                return `
+                    <tr class="${isNew ? 'new-row' : ''}">
+                        <td><span class="pulse-dot" style="background-color: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span></td>
+                        <td style="font-weight: 600; color: #f8fafc;">${escapeHtml(log.device_name || 'Unknown Device')}</td>
+                        <td><span class="uid-badge">${escapeHtml(log.device_uid)}</span></td>
+                        <td>${bpDisplay}</td>
+                        <td>${spo2Display}</td>
+                        <td>${hrDisplay}</td>
+                        <td>${stepsDisplay}</td>
+                        <td style="white-space: nowrap;">${formatDateTime(log.timestamp)}</td>
+                    </tr>
+                `;
+            } else {
+                return `
+                    <tr class="${isNew ? 'new-row' : ''}">
+                        <td><span class="pulse-dot"></span></td>
+                        <td style="font-weight: 600; color: #f8fafc;">${escapeHtml(log.device_name || 'Unknown Device')}</td>
+                        <td><span class="uid-badge">${escapeHtml(log.device_uid)}</span></td>
+                        <td class="coord">${log.latitude != null ? parseFloat(log.latitude).toFixed(5) : '<span class="empty-val">—</span>'}</td>
+                        <td class="coord">${log.longitude != null ? parseFloat(log.longitude).toFixed(5) : '<span class="empty-val">—</span>'}</td>
+                        <td style="white-space: nowrap;">${formatDateTime(log.timestamp)}</td>
+                    </tr>
+                `;
+            }
         }
 
         async function fetchDeviceList() {
@@ -395,7 +570,7 @@
                 devices.forEach(d => {
                     const option = document.createElement('option');
                     option.value = d.device_uid;
-                    option.textContent = d.name || d.device_uid;
+                    option.textContent = d.name ? `${d.name} (${d.device_uid})` : d.device_uid;
                     deviceFilter.appendChild(option);
                 });
             } catch (err) {
@@ -404,22 +579,31 @@
         }
 
         function renderLogs(logsToRender) {
+            const colCount = currentLogType === 'vitals' ? 8 : 6;
             if (logsToRender && logsToRender.length > 0) {
                 logsBody.innerHTML = logsToRender.map(log => createRowHtml(log)).join('');
             } else {
+                const typeLabel = currentLogType === 'vitals' ? 'health vitals' : 'telemetry';
                 logsBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="empty-state">
+                        <td colspan="${colCount}" class="empty-state">
                             <i class="fa-solid fa-inbox"></i>
-                            <p>No telemetry logs found for this selection.</p>
+                            <p>No ${typeLabel} logs found for this selection.</p>
                         </td>
                     </tr>
                 `;
             }
         }
 
+        function onLogTypeChange() {
+            currentLogType = logTypeFilter.value;
+            currentPage = 1;
+            renderTableHeader();
+            fetchLogs();
+        }
+
         function applyFilter() {
-            currentPage = 1; // Reset to page 1 when filter changes
+            currentPage = 1; // Reset to page 1 when device filter changes
             fetchLogs();
         }
         
@@ -431,11 +615,12 @@
             }
         }
 
-        // Fetch historical logs
+        // Fetch logs based on active log type & device filter
         async function fetchLogs() {
             try {
                 const uid = deviceFilter.value || 'all';
-                const response = await fetch(`/api/logs/all?page=${currentPage}&limit=50&device_uid=${uid}`);
+                const endpoint = currentLogType === 'vitals' ? '/api/logs/vitals' : '/api/logs/all';
+                const response = await fetch(`${endpoint}?page=${currentPage}&limit=50&device_uid=${uid}`);
                 const result = await response.json();
                 
                 const data = result.data || [];
@@ -459,9 +644,10 @@
                 }
             } catch (error) {
                 console.error('Error fetching logs:', error);
+                const colCount = currentLogType === 'vitals' ? 8 : 6;
                 logsBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="empty-state" style="color: #ef4444;">
+                        <td colspan="${colCount}" class="empty-state" style="color: #ef4444;">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             <p>Error loading logs. Make sure the backend server is running.</p>
                         </td>
@@ -470,13 +656,18 @@
             }
         }
 
-        // Initial fetch
+        // Initial setup & fetch
+        renderTableHeader();
         fetchDeviceList();
         fetchLogs();
 
-        // Listen for Real-Time Updates
+        // --- Socket.IO Real-Time Updates ---
         const socket = io();
+
+        // 1. GPS Telemetry Updates
         socket.on('device_moved', (data) => {
+            if (currentLogType !== 'telemetry') return;
+
             const newLog = {
                 device_uid: data.id,
                 device_name: data.name || ('Device ' + data.id),
@@ -487,7 +678,7 @@
             
             const selectedUid = deviceFilter.value;
             
-            // Only update DOM dynamically if we are currently looking at Page 1 and the filter matches
+            // Only update DOM dynamically if currently on Page 1 and filter matches
             if (currentPage === 1 && (selectedUid === 'all' || selectedUid === newLog.device_uid)) {
                 allLogs.unshift(newLog);
                 
@@ -498,7 +689,45 @@
                 
                 logsBody.insertAdjacentHTML('afterbegin', createRowHtml(newLog, true));
                 
-                // Maintain a cap of 50 items per page to prevent infinite scrolling on page 1
+                // Maintain maximum 50 rows per page
+                if (logsBody.children.length > 50) {
+                    logsBody.removeChild(logsBody.lastChild);
+                    allLogs.pop();
+                }
+            }
+        });
+
+        // 2. Health Vitals Updates (Instant Arrival Animation)
+        socket.on('vitals_updated', (data) => {
+            if (currentLogType !== 'vitals') return;
+
+            const newLog = {
+                device_uid: data.device_uid || data.id,
+                device_name: data.name || ('Device ' + (data.device_uid || data.id)),
+                heart_rate: data.heart_rate,
+                blood_pressure: data.blood_pressure,
+                blood_pressure_sys: data.bp_sys,
+                blood_pressure_dia: data.bp_dia,
+                spo2: data.spo2,
+                steps: data.steps,
+                timestamp: data.timestamp
+            };
+            
+            const selectedUid = deviceFilter.value;
+            
+            // Only update DOM dynamically if currently on Page 1 and filter matches
+            if (currentPage === 1 && (selectedUid === 'all' || selectedUid === newLog.device_uid)) {
+                allLogs.unshift(newLog);
+                
+                if (logsBody.querySelector('.empty-state')) {
+                    logsBody.innerHTML = '';
+                    document.getElementById('pagination-container').style.display = 'flex';
+                }
+                
+                // Smooth instant arrival animation with highlight fade
+                logsBody.insertAdjacentHTML('afterbegin', createRowHtml(newLog, true));
+                
+                // Maintain maximum 50 rows per page
                 if (logsBody.children.length > 50) {
                     logsBody.removeChild(logsBody.lastChild);
                     allLogs.pop();
