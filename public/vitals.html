@@ -3,30 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Health Vitals Command Center - Real-Time IoT Tracker</title>
-    <meta name="description" content="Real-time health vitals monitoring dashboard for IoT devices including Blood Pressure, Heart Rate, SpO2, and Steps count">
+    <title>Health Vitals Monitor - Real-Time Telemetry</title>
+    <meta name="description" content="Professional real-time health vitals telemetry dashboard for IoT devices including Blood Pressure, Heart Rate, SpO2, and Steps count">
     
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --panel-bg: rgba(22, 30, 49, 0.75);
-            --card-border: rgba(255, 255, 255, 0.08);
-            --text-color: #f8fafc;
+            --bg-color: #0b0f17;
+            --surface-color: #121824;
+            --surface-hover: #161f30;
+            --border-color: #1e293b;
+            --border-subtle: #172033;
+            --text-main: #f1f5f9;
             --text-muted: #94a3b8;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.4);
+            --text-dim: #64748b;
+            
+            --accent-blue: #3b82f6;
+            --hr-color: #ef4444;
+            --bp-color: #8b5cf6;
+            --spo2-color: #0284c7;
+            --steps-color: #10b981;
             --success: #10b981;
             --warning: #f59e0b;
-            --danger: #ef4444;
-            --hr-color: #f43f5e;
-            --spo2-color: #06b6d4;
-            --bp-color: #a855f7;
-            --steps-color: #10b981;
         }
 
         * {
@@ -38,21 +40,17 @@
         body, html {
             width: 100%;
             min-height: 100vh;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(244, 63, 94, 0.08), transparent 35%),
-                radial-gradient(circle at 90% 10%, rgba(6, 182, 212, 0.08), transparent 40%),
-                radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.07), transparent 45%);
-            background-attachment: fixed;
+            color: var(--text-main);
             line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
-            max-width: 1320px;
+            max-width: 1280px;
             margin: 0 auto;
-            padding: 30px 24px 60px;
+            padding: 28px 24px 60px;
         }
 
         /* Top Header */
@@ -61,165 +59,147 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 20px;
-            margin-bottom: 28px;
+            gap: 16px;
+            margin-bottom: 24px;
             padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .brand-block {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         .brand-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(168, 85, 247, 0.2));
-            border: 1px solid rgba(244, 63, 94, 0.4);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.6rem;
+            font-size: 1.2rem;
             color: var(--hr-color);
-            box-shadow: 0 8px 24px rgba(244, 63, 94, 0.25);
         }
 
         .brand-text h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.85rem;
+            font-size: 1.35rem;
             font-weight: 700;
-            color: #ffffff;
+            color: var(--text-main);
             display: flex;
             align-items: center;
-            gap: 12px;
-            letter-spacing: -0.5px;
+            gap: 10px;
+            letter-spacing: -0.3px;
         }
 
         .live-tag {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.8px;
-            background: rgba(16, 185, 129, 0.15);
+            font-weight: 600;
+            letter-spacing: 0.6px;
+            background: rgba(16, 185, 129, 0.1);
             color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.35);
-            padding: 3px 9px;
-            border-radius: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            padding: 3px 8px;
+            border-radius: 6px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
         .live-dot {
-            width: 7px;
-            height: 7px;
+            width: 6px;
+            height: 6px;
             background-color: var(--success);
             border-radius: 50%;
-            box-shadow: 0 0 8px var(--success);
-            animation: pulse-live 1.8s infinite;
-        }
-
-        @keyframes pulse-live {
-            0% { transform: scale(0.9); opacity: 1; }
-            50% { transform: scale(1.4); opacity: 0.4; }
-            100% { transform: scale(0.9); opacity: 1; }
         }
 
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
         .nav-btn {
-            background: rgba(255, 255, 255, 0.05);
-            color: #f1f5f9;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 9px 18px;
-            border-radius: 12px;
+            background: var(--surface-color);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 8px;
             text-decoration: none;
-            font-size: 0.92rem;
+            font-size: 0.88rem;
             font-weight: 500;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            transition: all 0.25s ease;
-            backdrop-filter: blur(10px);
+            transition: all 0.15s ease;
         }
 
         .nav-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+            background: var(--surface-hover);
+            border-color: #334155;
+            color: #ffffff;
         }
 
         .nav-btn.active {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.4);
             color: #60a5fa;
         }
 
         /* Device Control Bar */
         .control-bar {
-            background: var(--panel-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 20px;
-            padding: 18px 24px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 16px;
-            margin-bottom: 28px;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            margin-bottom: 24px;
         }
 
         .device-selector-wrap {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 10px;
         }
 
         .device-selector-wrap label {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
 
-        .aesthetic-select {
+        .clean-select {
             appearance: none;
-            background: rgba(11, 15, 25, 0.8);
-            border: 1px solid rgba(59, 130, 246, 0.35);
-            color: #f8fafc;
-            padding: 10px 42px 10px 18px;
-            border-radius: 12px;
+            background: #0b0f17;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 36px 8px 14px;
+            border-radius: 8px;
             font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
             outline: none;
-            transition: all 0.25s ease;
-            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
+            transition: border-color 0.15s ease;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
             background-repeat: no-repeat;
-            background-position: right 14px center;
-            background-size: 16px;
+            background-position: right 10px center;
+            background-size: 14px;
         }
 
-        .aesthetic-select:hover, .aesthetic-select:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 16px rgba(59, 130, 246, 0.3);
+        .clean-select:hover, .clean-select:focus {
+            border-color: #475569;
         }
 
-        .aesthetic-select option {
+        .clean-select option {
             background-color: #0f172a;
             color: #f8fafc;
         }
@@ -227,276 +207,246 @@
         .device-meta-badges {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
         .meta-pill {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            padding: 6px 14px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-
-        .meta-pill strong {
-            color: #f8fafc;
-        }
-
-        /* 4-Column KPI Vitals Grid */
-        .vitals-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
-        }
-
-        .vital-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 26px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            overflow: hidden;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 16px 36px rgba(0,0,0,0.3);
-            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .vital-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 20px 44px rgba(0,0,0,0.45);
-        }
-
-        /* Glowing ambient backlight per card */
-        .vital-card::before {
-            content: '';
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            pointer-events: none;
-            filter: blur(40px);
-            opacity: 0.35;
-        }
-
-        .card-hr::before { background: var(--hr-color); }
-        .card-bp::before { background: var(--bp-color); }
-        .card-spo2::before { background: var(--spo2-color); }
-        .card-steps::before { background: var(--steps-color); }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .card-title-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .icon-circle {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-        }
-
-        .card-hr .icon-circle {
-            background: rgba(244, 63, 94, 0.15);
-            color: var(--hr-color);
-            border: 1px solid rgba(244, 63, 94, 0.3);
-        }
-
-        .card-bp .icon-circle {
-            background: rgba(168, 85, 247, 0.15);
-            color: var(--bp-color);
-            border: 1px solid rgba(168, 85, 247, 0.3);
-        }
-
-        .card-spo2 .icon-circle {
-            background: rgba(6, 182, 212, 0.15);
-            color: var(--spo2-color);
-            border: 1px solid rgba(6, 182, 212, 0.3);
-        }
-
-        .card-steps .icon-circle {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--steps-color);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .card-name {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: #f8fafc;
-        }
-
-        .card-subtitle {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Pulse heartbeat animation */
-        .heartbeat-icon {
-            animation: heart-beat 1.2s infinite;
-        }
-
-        @keyframes heart-beat {
-            0% { transform: scale(1); }
-            14% { transform: scale(1.22); }
-            28% { transform: scale(1); }
-            42% { transform: scale(1.28); }
-            70% { transform: scale(1); }
-        }
-
-        .status-pill {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 20px;
-            letter-spacing: 0.3px;
-        }
-
-        .status-optimal {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .status-warning {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .status-nodata {
-            background: rgba(100, 116, 139, 0.15);
-            color: #94a3b8;
-            border: 1px dashed rgba(100, 116, 139, 0.35);
-        }
-
-        /* Metric Value Display */
-        .metric-body {
-            margin-bottom: 22px;
-        }
-
-        .metric-value-wrap {
-            display: flex;
-            align-items: baseline;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .metric-value {
-            font-family: 'Outfit', sans-serif;
-            font-size: 2.7rem;
-            font-weight: 700;
-            letter-spacing: -1px;
-            color: #ffffff;
-            transition: all 0.4s ease;
-        }
-
-        .metric-unit {
-            font-size: 1.05rem;
-            font-weight: 500;
-            color: var(--text-muted);
-        }
-
-        /* Visual Sparkline / Bar Indicator */
-        .progress-track {
-            width: 100%;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.06);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 14px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .card-hr .progress-fill { background: linear-gradient(90deg, #f43f5e, #fb7185); }
-        .card-bp .progress-fill { background: linear-gradient(90deg, #8b5cf6, #ec4899); }
-        .card-spo2 .progress-fill { background: linear-gradient(90deg, #06b6d4, #38bdf8); }
-        .card-steps .progress-fill { background: linear-gradient(90deg, #10b981, #34d399); }
-
-        .card-footer-info {
-            display: flex;
-            justify-content: space-between;
+            background: #0b0f17;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 8px;
             font-size: 0.82rem;
             color: var(--text-muted);
-            margin-top: 10px;
-        }
-
-        .card-footer-info strong {
-            color: #e2e8f0;
-        }
-
-        /* Empty state for single vital metric */
-        .empty-metric-hint {
-            color: #64748b;
-            font-size: 0.85rem;
-            font-style: italic;
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        /* Table Card for Recent Stream */
-        .logs-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 24px;
+        .meta-pill strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        /* 4-Card Hero Vitals KPI Grid */
+        .vitals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .vital-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .vital-card:hover {
+            border-color: #334155;
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .icon-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+
+        .card-bp .icon-circle { background: rgba(139, 92, 246, 0.12); color: var(--bp-color); }
+        .card-hr .icon-circle { background: rgba(239, 68, 68, 0.12); color: var(--hr-color); }
+        .card-spo2 .icon-circle { background: rgba(2, 132, 199, 0.12); color: var(--spo2-color); }
+        .card-steps .icon-circle { background: rgba(16, 185, 129, 0.12); color: var(--steps-color); }
+
+        .card-titles {
+            min-width: 0;
+        }
+
+        .card-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
             overflow: hidden;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            text-overflow: ellipsis;
+        }
+
+        .card-subtitle {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        /* Status Badge - Compact & Clean */
+        .status-pill {
+            font-size: 0.72rem;
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .status-pill .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-optimal {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .status-optimal .dot { background-color: #34d399; }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .status-warning .dot { background-color: #fbbf24; }
+
+        .status-nodata {
+            background: rgba(100, 116, 139, 0.1);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+        }
+        .status-nodata .dot { background-color: #64748b; }
+
+        /* Metric Value Display */
+        .metric-body {
+            margin-bottom: 18px;
+        }
+
+        .metric-value-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .metric-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+            line-height: 1.1;
+        }
+
+        .metric-unit {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-dim);
+        }
+
+        /* Empty state hint */
+        .empty-metric-hint {
+            color: var(--text-dim);
+            font-size: 0.78rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 4px;
+        }
+
+        /* Subtle Progress Bar */
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        .card-bp .progress-fill { background: var(--bp-color); }
+        .card-hr .progress-fill { background: var(--hr-color); }
+        .card-spo2 .progress-fill { background: var(--spo2-color); }
+        .card-steps .progress-fill { background: var(--steps-color); }
+
+        .card-footer-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card-footer-info strong {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Live Activity Stream Table */
+        .logs-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            overflow: hidden;
             margin-bottom: 40px;
         }
 
         .logs-card-header {
-            padding: 22px 28px;
+            padding: 16px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            flex-wrap: wrap;
-            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+            background: #0e141f;
         }
 
         .logs-card-header h2 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.3rem;
+            font-size: 0.95rem;
             font-weight: 600;
+            color: var(--text-main);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .table-responsive {
             overflow-x: auto;
-            max-height: 520px;
+            max-height: 480px;
         }
 
         table {
@@ -506,120 +456,96 @@
         }
 
         th {
-            background: rgba(11, 15, 25, 0.95);
-            padding: 18px 24px;
-            font-size: 0.82rem;
+            background: #0e141f;
+            padding: 14px 20px;
+            font-size: 0.74rem;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #f8fafc;
-            font-weight: 700;
-            border-bottom: 2px solid var(--hr-color);
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
             z-index: 10;
         }
 
         td {
-            padding: 16px 24px;
-            font-size: 0.92rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            color: #cbd5e1;
+            padding: 14px 20px;
+            font-size: 0.88rem;
+            border-bottom: 1px solid var(--border-subtle);
+            color: var(--text-muted);
         }
 
         tr:hover {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--surface-hover);
         }
 
         .uid-badge {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            padding: 5px 10px;
-            border-radius: 8px;
+            background: #0b0f17;
+            color: #93c5fd;
+            padding: 3px 8px;
+            border-radius: 6px;
             font-family: monospace;
-            font-size: 0.88rem;
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            font-size: 0.82rem;
+            border: 1px solid var(--border-color);
         }
 
         .vital-badge-inline {
             font-family: monospace;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            padding: 3px 8px;
+            border-radius: 6px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
-        .badge-hr {
-            color: #fda4af;
-            background: rgba(244, 63, 94, 0.12);
-            border: 1px solid rgba(244, 63, 94, 0.3);
-        }
-
-        .badge-bp {
-            color: #d8b4fe;
-            background: rgba(168, 85, 247, 0.12);
-            border: 1px solid rgba(168, 85, 247, 0.3);
-        }
-
-        .badge-spo2 {
-            color: #67e8f9;
-            background: rgba(6, 182, 212, 0.12);
-            border: 1px solid rgba(6, 182, 212, 0.3);
-        }
-
-        .badge-steps {
-            color: #6ee7b7;
-            background: rgba(16, 185, 129, 0.12);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
+        .badge-bp { color: #c4b5fd; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); }
+        .badge-hr { color: #fca5a5; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .badge-spo2 { color: #7dd3fc; background: rgba(2, 132, 199, 0.1); border: 1px solid rgba(2, 132, 199, 0.2); }
+        .badge-steps { color: #86efac; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); }
 
         .empty-dash {
             color: #64748b;
-            background: rgba(100, 116, 139, 0.12);
-            border: 1px dashed rgba(100, 116, 139, 0.3);
-            padding: 3px 12px;
-            border-radius: 6px;
             font-weight: 600;
-            font-size: 0.88rem;
+            padding: 2px 8px;
+            border-radius: 4px;
             display: inline-block;
         }
 
-        /* Pulse glow row highlight */
         .new-row {
-            animation: vitalsRowGlow 2.5s ease-out forwards;
+            animation: subtleHighlight 2s ease-out;
         }
 
-        @keyframes vitalsRowGlow {
-            0% { background: rgba(244, 63, 94, 0.28); }
+        @keyframes subtleHighlight {
+            0% { background: rgba(59, 130, 246, 0.15); }
             100% { background: transparent; }
         }
 
-        .card-pulse-update {
-            animation: cardFlash 1.2s ease-out;
-        }
-
-        @keyframes cardFlash {
-            0% { transform: scale(1.03); border-color: #f43f5e; box-shadow: 0 0 25px rgba(244, 63, 94, 0.5); }
-            100% { transform: scale(1); }
-        }
-
         .empty-state {
-            padding: 60px 20px;
+            padding: 50px 20px;
             text-align: center;
-            color: #64748b;
+            color: var(--text-dim);
         }
 
         .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 16px;
-            opacity: 0.5;
+            font-size: 2.2rem;
+            margin-bottom: 12px;
+            opacity: 0.4;
         }
 
-        /* Responsive */
+        /* Pulse live ping */
+        .pulse-live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            display: inline-block;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 18px 14px 40px; }
-            .metric-value { font-size: 2.2rem; }
             .top-header { flex-direction: column; align-items: flex-start; }
             .control-bar { flex-direction: column; align-items: flex-start; }
         }
@@ -636,7 +562,7 @@
                     <i class="fa-solid fa-heart-pulse"></i>
                 </div>
                 <div class="brand-text">
-                    <h1>Health Vitals Command <span class="live-tag"><span class="live-dot"></span> LIVE TELEMETRY</span></h1>
+                    <h1>Health Vitals <span class="live-tag"><span class="live-dot"></span> LIVE</span></h1>
                 </div>
             </div>
 
@@ -659,24 +585,24 @@
         <!-- Device Selector Control Bar -->
         <section class="control-bar">
             <div class="device-selector-wrap">
-                <label for="device-select"><i class="fa-solid fa-microchip" style="color: var(--accent);"></i> Target Tracker:</label>
-                <select id="device-select" class="aesthetic-select" onchange="onDeviceChange()">
-                    <option value="all">⚡ All Devices Overview</option>
+                <label for="device-select"><i class="fa-solid fa-microchip" style="color: var(--accent-blue); margin-right: 4px;"></i> Target Device:</label>
+                <select id="device-select" class="clean-select" onchange="onDeviceChange()">
+                    <option value="all">All Devices Overview</option>
                 </select>
             </div>
 
             <div class="device-meta-badges">
                 <div class="meta-pill">
-                    <i class="fa-solid fa-circle-dot" style="color: var(--success); font-size: 0.75rem;"></i>
+                    <span class="pulse-live-dot"></span>
                     <span>Status: <strong id="meta-status">Active</strong></span>
                 </div>
                 <div class="meta-pill">
-                    <i class="fa-solid fa-battery-half" style="color: var(--accent);"></i>
+                    <i class="fa-solid fa-battery-half" style="color: var(--accent-blue);"></i>
                     <span>Battery: <strong id="meta-battery">--%</strong></span>
                 </div>
                 <div class="meta-pill">
                     <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span>Last Received: <strong id="meta-last-seen">Waiting for data...</strong></span>
+                    <span>Last Transmission: <strong id="meta-last-seen">Waiting for data...</strong></span>
                 </div>
             </div>
         </section>
@@ -691,28 +617,30 @@
                         <div class="icon-circle">
                             <i class="fa-solid fa-gauge-simple-high"></i>
                         </div>
-                        <div>
+                        <div class="card-titles">
                             <div class="card-name">Blood Pressure</div>
                             <div class="card-subtitle">Systolic / Diastolic</div>
                         </div>
                     </div>
-                    <span class="status-pill status-optimal" id="bp-status-badge">Normal</span>
+                    <span class="status-pill status-nodata" id="bp-status-badge">
+                        <span class="dot"></span> Awaiting Data
+                    </span>
                 </div>
                 <div class="metric-body">
                     <div class="metric-value-wrap">
-                        <span class="metric-value" id="val-bp">--/--</span>
+                        <span class="metric-value" id="val-bp">—</span>
                         <span class="metric-unit">mmHg</span>
                     </div>
-                    <div id="bp-empty-notice" class="empty-metric-hint" style="display: none;">
-                        <i class="fa-solid fa-circle-info"></i> Not received in latest packet
+                    <div id="bp-empty-notice" class="empty-metric-hint">
+                        <i class="fa-solid fa-circle-info"></i> Sensor data awaiting transmission
                     </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="bp-progress" style="width: 50%;"></div>
+                    <div class="progress-track" id="bp-progress-track" style="display: none;">
+                        <div class="progress-fill" id="bp-progress" style="width: 0%;"></div>
                     </div>
                 </div>
                 <div class="card-footer-info">
-                    <span>SYS: <strong id="bp-sys-text">--</strong> mmHg</span>
-                    <span>DIA: <strong id="bp-dia-text">--</strong> mmHg</span>
+                    <span>SYS: <strong id="bp-sys-text">—</strong> mmHg</span>
+                    <span>DIA: <strong id="bp-dia-text">—</strong> mmHg</span>
                 </div>
             </div>
 
@@ -721,30 +649,32 @@
                 <div class="card-header">
                     <div class="card-title-group">
                         <div class="icon-circle">
-                            <i class="fa-solid fa-heart heartbeat-icon"></i>
+                            <i class="fa-solid fa-heart"></i>
                         </div>
-                        <div>
+                        <div class="card-titles">
                             <div class="card-name">Heart Rate</div>
                             <div class="card-subtitle">Pulse BPM</div>
                         </div>
                     </div>
-                    <span class="status-pill status-optimal" id="hr-status-badge">Resting</span>
+                    <span class="status-pill status-nodata" id="hr-status-badge">
+                        <span class="dot"></span> Awaiting Data
+                    </span>
                 </div>
                 <div class="metric-body">
                     <div class="metric-value-wrap">
-                        <span class="metric-value" id="val-hr">--</span>
+                        <span class="metric-value" id="val-hr">—</span>
                         <span class="metric-unit">BPM</span>
                     </div>
-                    <div id="hr-empty-notice" class="empty-metric-hint" style="display: none;">
-                        <i class="fa-solid fa-circle-info"></i> Not received in latest packet
+                    <div id="hr-empty-notice" class="empty-metric-hint">
+                        <i class="fa-solid fa-circle-info"></i> Sensor data awaiting transmission
                     </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="hr-progress" style="width: 50%;"></div>
+                    <div class="progress-track" id="hr-progress-track" style="display: none;">
+                        <div class="progress-fill" id="hr-progress" style="width: 0%;"></div>
                     </div>
                 </div>
                 <div class="card-footer-info">
-                    <span>Target Zone: <strong>60-100 BPM</strong></span>
-                    <span id="hr-reading-time">Updated: Just now</span>
+                    <span>Resting Zone: <strong>60-100 BPM</strong></span>
+                    <span id="hr-reading-time">Awaiting signal</span>
                 </div>
             </div>
 
@@ -755,28 +685,30 @@
                         <div class="icon-circle">
                             <i class="fa-solid fa-droplet"></i>
                         </div>
-                        <div>
+                        <div class="card-titles">
                             <div class="card-name">Blood Oxygen (SpO2)</div>
                             <div class="card-subtitle">Arterial Oxygenation</div>
                         </div>
                     </div>
-                    <span class="status-pill status-optimal" id="spo2-status-badge">Normal</span>
+                    <span class="status-pill status-nodata" id="spo2-status-badge">
+                        <span class="dot"></span> Awaiting Data
+                    </span>
                 </div>
                 <div class="metric-body">
                     <div class="metric-value-wrap">
-                        <span class="metric-value" id="val-spo2">--</span>
+                        <span class="metric-value" id="val-spo2">—</span>
                         <span class="metric-unit">%</span>
                     </div>
-                    <div id="spo2-empty-notice" class="empty-metric-hint" style="display: none;">
-                        <i class="fa-solid fa-circle-info"></i> Not received in latest packet
+                    <div id="spo2-empty-notice" class="empty-metric-hint">
+                        <i class="fa-solid fa-circle-info"></i> Sensor data awaiting transmission
                     </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="spo2-progress" style="width: 98%;"></div>
+                    <div class="progress-track" id="spo2-progress-track" style="display: none;">
+                        <div class="progress-fill" id="spo2-progress" style="width: 0%;"></div>
                     </div>
                 </div>
                 <div class="card-footer-info">
                     <span>Threshold: <strong>&ge; 95% Normal</strong></span>
-                    <span id="spo2-grade">Grade: Optimal</span>
+                    <span id="spo2-grade">Awaiting signal</span>
                 </div>
             </div>
 
@@ -787,28 +719,30 @@
                         <div class="icon-circle">
                             <i class="fa-solid fa-person-walking"></i>
                         </div>
-                        <div>
+                        <div class="card-titles">
                             <div class="card-name">Steps Count</div>
-                            <div class="card-subtitle">Daily Activity Accumulator</div>
+                            <div class="card-subtitle">Daily Activity</div>
                         </div>
                     </div>
-                    <span class="status-pill status-optimal" id="steps-status-badge">Active</span>
+                    <span class="status-pill status-nodata" id="steps-status-badge">
+                        <span class="dot"></span> Awaiting Data
+                    </span>
                 </div>
                 <div class="metric-body">
                     <div class="metric-value-wrap">
-                        <span class="metric-value" id="val-steps">--</span>
+                        <span class="metric-value" id="val-steps">—</span>
                         <span class="metric-unit">steps</span>
                     </div>
-                    <div id="steps-empty-notice" class="empty-metric-hint" style="display: none;">
-                        <i class="fa-solid fa-circle-info"></i> Not received in latest packet
+                    <div id="steps-empty-notice" class="empty-metric-hint">
+                        <i class="fa-solid fa-circle-info"></i> Sensor data awaiting transmission
                     </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="steps-progress" style="width: 45%;"></div>
+                    <div class="progress-track" id="steps-progress-track" style="display: none;">
+                        <div class="progress-fill" id="steps-progress" style="width: 0%;"></div>
                     </div>
                 </div>
                 <div class="card-footer-info">
-                    <span>Goal: <strong>10,000 steps</strong></span>
-                    <span>Distance: <strong id="steps-distance">-- km</strong></span>
+                    <span>Daily Target: <strong>10,000 steps</strong></span>
+                    <span>Distance: <strong id="steps-distance">—</strong></span>
                 </div>
             </div>
 
@@ -817,9 +751,9 @@
         <!-- Live Vitals Telemetry Feed Table -->
         <section class="logs-card">
             <div class="logs-card-header">
-                <h2><i class="fa-solid fa-wave-square" style="color: var(--hr-color);"></i> Live Incoming Vitals Feed</h2>
-                <a href="/logs.html" class="nav-btn" style="font-size: 0.85rem; padding: 6px 14px;">
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Full System Logs
+                <h2><i class="fa-solid fa-table-list" style="color: var(--text-muted);"></i> Recent Vitals Telemetry Logs</h2>
+                <a href="/logs.html" class="nav-btn" style="font-size: 0.82rem; padding: 5px 12px;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open System Logs
                 </a>
             </div>
 
@@ -841,7 +775,7 @@
                         <tr>
                             <td colspan="8" class="empty-state">
                                 <i class="fa-solid fa-circle-notch fa-spin"></i>
-                                <p>Connecting to backend vitals stream...</p>
+                                <p>Loading vitals data...</p>
                             </td>
                         </tr>
                     </tbody>
@@ -860,7 +794,7 @@
         let devicesList = [];
         let latestVitalsCache = new Map();
 
-        // Format Date to nice readable format: DD/MMM/YYYY, hh:mm AM/PM
+        // Format Date to: DD/MMM/YYYY, hh:mm AM/PM
         function formatDateTime(dateString) {
             if (!dateString) return 'Unknown';
             const date = new Date(dateString + (String(dateString).endsWith('Z') ? '' : 'Z'));
@@ -901,7 +835,7 @@
                 const res = await fetch('/api/devices');
                 devicesList = await res.json();
                 
-                deviceSelect.innerHTML = '<option value="all">⚡ All Devices Overview</option>';
+                deviceSelect.innerHTML = '<option value="all">All Devices Overview</option>';
                 devicesList.forEach(dev => {
                     const opt = document.createElement('option');
                     opt.value = dev.device_uid;
@@ -923,15 +857,15 @@
 
                 if (Array.isArray(data)) {
                     data.forEach(item => latestVitalsCache.set(item.device_uid, item));
-                    // If 'all' is selected, display the most recent one
                     if (data.length > 0) {
                         updateCardMetrics(data[0]);
+                    } else {
+                        clearCardMetrics();
                     }
                 } else if (data && data.device_uid) {
                     latestVitalsCache.set(data.device_uid, data);
                     updateCardMetrics(data);
                 } else {
-                    // No data for this device yet
                     clearCardMetrics();
                 }
             } catch (e) {
@@ -974,7 +908,7 @@
 
             // Meta Bar
             document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
-            document.getElementById('meta-status').textContent = 'Live / Receiving';
+            document.getElementById('meta-status').textContent = 'Online / Active';
             if (vitals.battery_percentage != null) {
                 document.getElementById('meta-battery').textContent = `${vitals.battery_percentage}%`;
             }
@@ -985,36 +919,40 @@
             const bpStatusBadge = document.getElementById('bp-status-badge');
             const bpSysText = document.getElementById('bp-sys-text');
             const bpDiaText = document.getElementById('bp-dia-text');
+            const bpTrack = document.getElementById('bp-progress-track');
             const bpProgress = document.getElementById('bp-progress');
 
             if (vitals.blood_pressure && vitals.blood_pressure !== '—/—') {
                 bpValElem.textContent = vitals.blood_pressure;
                 bpNotice.style.display = 'none';
                 bpStatusBadge.className = 'status-pill status-optimal';
-                bpStatusBadge.textContent = 'Normal';
+                bpStatusBadge.innerHTML = '<span class="dot"></span> Normal';
 
                 const sys = vitals.blood_pressure_sys || (vitals.blood_pressure.split('/')[0]);
                 const dia = vitals.blood_pressure_dia || (vitals.blood_pressure.split('/')[1]);
-                bpSysText.textContent = sys || '--';
-                bpDiaText.textContent = dia || '--';
+                bpSysText.textContent = sys || '—';
+                bpDiaText.textContent = dia || '—';
 
+                bpTrack.style.display = 'block';
                 const pct = Math.min(100, Math.max(10, ((parseInt(sys) || 120) / 180) * 100));
                 bpProgress.style.width = `${pct}%`;
             } else {
                 bpValElem.textContent = '—';
                 bpNotice.style.display = 'flex';
                 bpStatusBadge.className = 'status-pill status-nodata';
-                bpStatusBadge.textContent = 'Not Received';
+                bpStatusBadge.innerHTML = '<span class="dot"></span> Awaiting Data';
                 bpSysText.textContent = '—';
                 bpDiaText.textContent = '—';
-                bpProgress.style.width = '0%';
+                bpTrack.style.display = 'none';
             }
 
             // 2. Heart Rate (HR)
             const hrValElem = document.getElementById('val-hr');
             const hrNotice = document.getElementById('hr-empty-notice');
             const hrStatusBadge = document.getElementById('hr-status-badge');
+            const hrTrack = document.getElementById('hr-progress-track');
             const hrProgress = document.getElementById('hr-progress');
+            const hrTimeElem = document.getElementById('hr-reading-time');
 
             if (vitals.heart_rate != null && vitals.heart_rate !== '') {
                 hrValElem.textContent = vitals.heart_rate;
@@ -1022,29 +960,34 @@
                 const hr = parseInt(vitals.heart_rate, 10);
                 if (hr < 60) {
                     hrStatusBadge.className = 'status-pill status-warning';
-                    hrStatusBadge.textContent = 'Low (Bradycardia)';
+                    hrStatusBadge.innerHTML = '<span class="dot"></span> Low (Bradycardia)';
                 } else if (hr > 100) {
                     hrStatusBadge.className = 'status-pill status-warning';
-                    hrStatusBadge.textContent = 'High (Tachycardia)';
+                    hrStatusBadge.innerHTML = '<span class="dot"></span> High (Tachycardia)';
                 } else {
                     hrStatusBadge.className = 'status-pill status-optimal';
-                    hrStatusBadge.textContent = 'Normal (60-100)';
+                    hrStatusBadge.innerHTML = '<span class="dot"></span> Normal';
                 }
+                hrTrack.style.display = 'block';
                 const pct = Math.min(100, Math.max(10, (hr / 160) * 100));
                 hrProgress.style.width = `${pct}%`;
+                hrTimeElem.textContent = 'Measured live';
             } else {
                 hrValElem.textContent = '—';
                 hrNotice.style.display = 'flex';
                 hrStatusBadge.className = 'status-pill status-nodata';
-                hrStatusBadge.textContent = 'Not Received';
-                hrProgress.style.width = '0%';
+                hrStatusBadge.innerHTML = '<span class="dot"></span> Awaiting Data';
+                hrTrack.style.display = 'none';
+                hrTimeElem.textContent = 'Awaiting signal';
             }
 
             // 3. SpO2
             const spo2ValElem = document.getElementById('val-spo2');
             const spo2Notice = document.getElementById('spo2-empty-notice');
             const spo2StatusBadge = document.getElementById('spo2-status-badge');
+            const spo2Track = document.getElementById('spo2-progress-track');
             const spo2Progress = document.getElementById('spo2-progress');
+            const spo2Grade = document.getElementById('spo2-grade');
 
             if (vitals.spo2 != null && vitals.spo2 !== '') {
                 const spo2 = parseFloat(vitals.spo2);
@@ -1052,24 +995,29 @@
                 spo2Notice.style.display = 'none';
                 if (spo2 < 95) {
                     spo2StatusBadge.className = 'status-pill status-warning';
-                    spo2StatusBadge.textContent = 'Attention (<95%)';
+                    spo2StatusBadge.innerHTML = '<span class="dot"></span> Below Normal';
+                    spo2Grade.textContent = 'Attention';
                 } else {
                     spo2StatusBadge.className = 'status-pill status-optimal';
-                    spo2StatusBadge.textContent = 'Normal';
+                    spo2StatusBadge.innerHTML = '<span class="dot"></span> Optimal';
+                    spo2Grade.textContent = 'Optimal Range';
                 }
+                spo2Track.style.display = 'block';
                 spo2Progress.style.width = `${Math.min(100, spo2)}%`;
             } else {
                 spo2ValElem.textContent = '—';
                 spo2Notice.style.display = 'flex';
                 spo2StatusBadge.className = 'status-pill status-nodata';
-                spo2StatusBadge.textContent = 'Not Received';
-                spo2Progress.style.width = '0%';
+                spo2StatusBadge.innerHTML = '<span class="dot"></span> Awaiting Data';
+                spo2Track.style.display = 'none';
+                spo2Grade.textContent = 'Awaiting signal';
             }
 
             // 4. Steps Count
             const stepsValElem = document.getElementById('val-steps');
             const stepsNotice = document.getElementById('steps-empty-notice');
             const stepsStatusBadge = document.getElementById('steps-status-badge');
+            const stepsTrack = document.getElementById('steps-progress-track');
             const stepsProgress = document.getElementById('steps-progress');
             const stepsDistElem = document.getElementById('steps-distance');
 
@@ -1079,20 +1027,20 @@
                 stepsValElem.textContent = stepsNum.toLocaleString();
                 stepsNotice.style.display = 'none';
                 stepsStatusBadge.className = 'status-pill status-optimal';
-                stepsStatusBadge.textContent = 'Active';
+                stepsStatusBadge.innerHTML = '<span class="dot"></span> Active';
                 
+                stepsTrack.style.display = 'block';
                 const pct = Math.min(100, (stepsNum / 10000) * 100);
                 stepsProgress.style.width = `${pct}%`;
                 
-                // Average step length ~ 0.75 meters
                 const km = ((stepsNum * 0.75) / 1000).toFixed(2);
                 stepsDistElem.textContent = `${km} km`;
             } else {
                 stepsValElem.textContent = '—';
                 stepsNotice.style.display = 'flex';
                 stepsStatusBadge.className = 'status-pill status-nodata';
-                stepsStatusBadge.textContent = 'Not Received';
-                stepsProgress.style.width = '0%';
+                stepsStatusBadge.innerHTML = '<span class="dot"></span> Awaiting Data';
+                stepsTrack.style.display = 'none';
                 stepsDistElem.textContent = '—';
             }
         }
@@ -1101,47 +1049,56 @@
             document.getElementById('val-bp').textContent = '—';
             document.getElementById('bp-empty-notice').style.display = 'flex';
             document.getElementById('bp-status-badge').className = 'status-pill status-nodata';
-            document.getElementById('bp-status-badge').textContent = 'No Data';
+            document.getElementById('bp-status-badge').innerHTML = '<span class="dot"></span> Awaiting Data';
+            document.getElementById('bp-progress-track').style.display = 'none';
+            document.getElementById('bp-sys-text').textContent = '—';
+            document.getElementById('bp-dia-text').textContent = '—';
 
             document.getElementById('val-hr').textContent = '—';
             document.getElementById('hr-empty-notice').style.display = 'flex';
             document.getElementById('hr-status-badge').className = 'status-pill status-nodata';
-            document.getElementById('hr-status-badge').textContent = 'No Data';
+            document.getElementById('hr-status-badge').innerHTML = '<span class="dot"></span> Awaiting Data';
+            document.getElementById('hr-progress-track').style.display = 'none';
+            document.getElementById('hr-reading-time').textContent = 'Awaiting signal';
 
             document.getElementById('val-spo2').textContent = '—';
             document.getElementById('spo2-empty-notice').style.display = 'flex';
             document.getElementById('spo2-status-badge').className = 'status-pill status-nodata';
-            document.getElementById('spo2-status-badge').textContent = 'No Data';
+            document.getElementById('spo2-status-badge').innerHTML = '<span class="dot"></span> Awaiting Data';
+            document.getElementById('spo2-progress-track').style.display = 'none';
+            document.getElementById('spo2-grade').textContent = 'Awaiting signal';
 
             document.getElementById('val-steps').textContent = '—';
             document.getElementById('steps-empty-notice').style.display = 'flex';
             document.getElementById('steps-status-badge').className = 'status-pill status-nodata';
-            document.getElementById('steps-status-badge').textContent = 'No Data';
+            document.getElementById('steps-status-badge').innerHTML = '<span class="dot"></span> Awaiting Data';
+            document.getElementById('steps-progress-track').style.display = 'none';
+            document.getElementById('steps-distance').textContent = '—';
         }
 
         // Create table row with missing values displayed as dashes
         function createVitalsRow(log, isNew = false) {
             const bpDisplay = (log.blood_pressure && log.blood_pressure !== '—/—')
                 ? `<span class="vital-badge-inline badge-bp"><i class="fa-solid fa-gauge-simple-high"></i> ${escapeHtml(log.blood_pressure)}</span>`
-                : `<span class="empty-dash" title="Not Received in Backend">—</span>`;
+                : `<span class="empty-dash">—</span>`;
 
             const spo2Display = (log.spo2 != null && log.spo2 !== '')
                 ? `<span class="vital-badge-inline badge-spo2"><i class="fa-solid fa-droplet"></i> ${parseFloat(log.spo2).toFixed(1)}%</span>`
-                : `<span class="empty-dash" title="Not Received in Backend">—</span>`;
+                : `<span class="empty-dash">—</span>`;
 
             const hrDisplay = (log.heart_rate != null && log.heart_rate !== '')
                 ? `<span class="vital-badge-inline badge-hr"><i class="fa-solid fa-heart"></i> ${log.heart_rate} bpm</span>`
-                : `<span class="empty-dash" title="Not Received in Backend">—</span>`;
+                : `<span class="empty-dash">—</span>`;
 
             const rawSteps = log.steps !== undefined ? log.steps : log.step_count;
             const stepsDisplay = (rawSteps != null && rawSteps !== '')
                 ? `<span class="vital-badge-inline badge-steps"><i class="fa-solid fa-person-walking"></i> ${Number(rawSteps).toLocaleString()}</span>`
-                : `<span class="empty-dash" title="Not Received in Backend">—</span>`;
+                : `<span class="empty-dash">—</span>`;
 
             return `
                 <tr class="${isNew ? 'new-row' : ''}">
                     <td><span class="live-dot" style="display: inline-block;"></span></td>
-                    <td style="font-weight: 600; color: #f8fafc;">${escapeHtml(log.device_name || 'Unknown Device')}</td>
+                    <td style="font-weight: 500; color: #f8fafc;">${escapeHtml(log.device_name || 'Unknown Device')}</td>
                     <td><span class="uid-badge">${escapeHtml(log.device_uid)}</span></td>
                     <td>${bpDisplay}</td>
                     <td>${spo2Display}</td>
@@ -1165,25 +1122,14 @@
         // --- Socket.IO Real-Time Incoming Vitals Hook ---
         const socket = io();
         socket.on('vitals_updated', (data) => {
-            console.log('[LIVE VITALS ARRIVED]', data);
             const targetUid = deviceSelect.value;
             const devUid = data.device_uid || data.id;
 
-            // If selected is 'all' or matches this device
             if (targetUid === 'all' || targetUid === devUid) {
-                // 1. Update KPI Cards with flash effect
+                // Update KPI Cards
                 updateCardMetrics(data);
-                
-                ['card-bp', 'card-hr', 'card-spo2', 'card-steps'].forEach(cardId => {
-                    const card = document.getElementById(cardId);
-                    if (card) {
-                        card.classList.remove('card-pulse-update');
-                        void card.offsetWidth; // trigger reflow
-                        card.classList.add('card-pulse-update');
-                    }
-                });
 
-                // 2. Prepend row to Live Stream table with highlight animation
+                // Prepend row to table
                 if (vitalsStreamBody.querySelector('.empty-state')) {
                     vitalsStreamBody.innerHTML = '';
                 }
