@@ -3,13 +3,23 @@ const net = require('net');
 const TCP_PORT = process.env.TCP_PORT || 5000;
 const HOST = '127.0.0.1';
 
-// Test scenarios
+// Test scenarios (name is completely removed from payload; identifier alone is sufficient)
 const testPackets = [
     {
-        scenario: "Full Health Vitals (All metrics present)",
+        scenario: "Full Health Vitals from Node001 (Shortened payload without name)",
+        payload: {
+            device_uid: "Node001",
+            battery: 94,
+            heart_rate: 78,
+            blood_pressure: "122/82",
+            spo2: 98.8,
+            steps: 4210
+        }
+    },
+    {
+        scenario: "Combined GPS + Vitals without name",
         payload: {
             device_uid: "8654020409",
-            name: "Delivery Van 1",
             lat: 13.0827,
             lon: 80.2707,
             speed: 15.0,
@@ -24,7 +34,6 @@ const testPackets = [
         scenario: "Partial Vitals: Heart Rate is NOT received (omitted)",
         payload: {
             device_uid: "ID:001",
-            name: "Tracker-001",
             battery: 92,
             blood_pressure: "126/82",
             spo2: 99.0,
@@ -36,24 +45,11 @@ const testPackets = [
         scenario: "Partial Vitals: BP and SpO2 received, Heart Rate is null, Steps received",
         payload: {
             device_uid: "HEALTH:8801",
-            name: "Smart Band Pro",
             battery: 79,
             heart_rate: null,
             blood_pressure: "118/76",
             spo2: 97.8,
             steps: 8940
-        }
-    },
-    {
-        scenario: "Full Vitals from Health Band with higher pulse",
-        payload: {
-            device_uid: "8654020409",
-            name: "Delivery Van 1",
-            battery: 87,
-            heart_rate: 82,
-            blood_pressure: "122/80",
-            spo2: 98.0,
-            steps: 5120
         }
     }
 ];

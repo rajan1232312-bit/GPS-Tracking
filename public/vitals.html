@@ -547,8 +547,21 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background-color: var(--success);
+            background-color: #64748b;
             display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .pulse-live-dot.online {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulseStatus 2s infinite;
+        }
+
+        @keyframes pulseStatus {
+            0% { transform: scale(0.95); opacity: 1; }
+            50% { transform: scale(1.35); opacity: 0.6; }
+            100% { transform: scale(0.95); opacity: 1; }
         }
 
         @media (max-width: 768px) {
@@ -597,8 +610,8 @@
 
             <div class="device-meta-badges">
                 <div class="meta-pill">
-                    <span class="pulse-live-dot"></span>
-                    <span>Status: <strong id="meta-status">Active</strong></span>
+                    <span class="pulse-live-dot" id="meta-status-dot"></span>
+                    <span>Status: <strong id="meta-status" style="color: #94a3b8;">Waiting for Data</strong></span>
                 </div>
                 <div class="meta-pill">
                     <i class="fa-solid fa-battery-half" style="color: var(--accent-blue);"></i>
@@ -910,11 +923,34 @@
                 return;
             }
 
-            // Meta Bar
-            document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
-            document.getElementById('meta-status').textContent = 'Online / Active';
-            if (vitals.battery_percentage != null) {
-                document.getElementById('meta-battery').textContent = `${vitals.battery_percentage}%`;
+            // Meta Bar - ONLY show Online if actual vitals data has been received from the backend
+            const statusDot = document.getElementById('meta-status-dot');
+            const statusText = document.getElementById('meta-status');
+            
+            if (vitals && vitals.timestamp) {
+                if (statusDot) {
+                    statusDot.className = 'pulse-live-dot online';
+                }
+                if (statusText) {
+                    statusText.textContent = 'Online / Active';
+                    statusText.style.color = '#34d399';
+                }
+                document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
+                if (vitals.battery_percentage != null) {
+                    document.getElementById('meta-battery').textContent = `${vitals.battery_percentage}%`;
+                } else {
+                    document.getElementById('meta-battery').textContent = '--%';
+                }
+            } else {
+                if (statusDot) {
+                    statusDot.className = 'pulse-live-dot';
+                }
+                if (statusText) {
+                    statusText.textContent = 'Waiting for Data';
+                    statusText.style.color = '#94a3b8';
+                }
+                document.getElementById('meta-last-seen').textContent = 'Waiting for data...';
+                document.getElementById('meta-battery').textContent = '--%';
             }
 
             // 1. Blood Pressure (BP)
@@ -1050,6 +1086,19 @@
         }
 
         function clearCardMetrics() {
+            // Reset Meta Bar to Waiting for Data state when no records received
+            const statusDot = document.getElementById('meta-status-dot');
+            const statusText = document.getElementById('meta-status');
+            if (statusDot) {
+                statusDot.className = 'pulse-live-dot';
+            }
+            if (statusText) {
+                statusText.textContent = 'Waiting for Data';
+                statusText.style.color = '#94a3b8';
+            }
+            document.getElementById('meta-last-seen').textContent = 'Waiting for data...';
+            document.getElementById('meta-battery').textContent = '--%';
+
             document.getElementById('val-bp').textContent = '—';
             document.getElementById('bp-empty-notice').style.display = 'flex';
             document.getElementById('bp-status-badge').className = 'status-pill status-nodata';

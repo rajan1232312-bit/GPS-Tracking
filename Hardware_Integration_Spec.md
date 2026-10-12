@@ -1,20 +1,22 @@
-# 📡 GPS Tracker Hardware Integration Specification
+# 📡 GPS & Vitals Hardware Integration Specification
 
-**1. Connection Protocol**
-*   **Protocol:** Raw TCP Socket
-*   **Target Port:** `5000`
-*   **Target IP:** `192.168.1.213`
+**1. Connection Protocols**
+*   **Raw TCP Socket:** Target Port `5000` (e.g. `192.168.1.213:5000`)
+*   **HTTP REST Endpoints:** 
+    *   GPS + Vitals: `POST /api/tracker/update`
+    *   Vitals Only: `POST /api/vitals/update`
 
 **2. Payload Format**
-The tracker must send data as a **raw JSON string** over the TCP connection. 
+The tracker/node must send data as a **compact JSON string** over TCP or HTTP.
 
 **3. Required JSON Structure**
-Every packet sent to the server **must** contain the following fields:
+To keep packet payloads minimal for microcontrollers (ESP32, GSM/GPRS modules, smart bands), only the device identifier (`device_uid`) is required. The `name` field has been **completely removed from the payload** and is resolved automatically from the registered database entry.
+
+*The identifier does not need to be digits; it can be any string identifier, such as `"Node001"` or an IMEI.*
 
 | Field | Type | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `device_uid` | String | The unique hardware identifier (IMEI/ID). **Required**. | `"8654020409"` |
-| `name` | String | The registered alias/name of the tracker. **Required**. | `"Delivery Van 1"` |
+| `device_uid` | String | The hardware identifier (or node name). **Required**. | `"Node001"` / `"8654020409"` |
 | `lat` | Float/Number | Latitude coordinates (Optional if sending vitals only). | `13.0827` |
 | `lon` | Float/Number | Longitude coordinates (Optional if sending vitals only). | `80.2707` |
 | `speed` | Float/Number | Current speed in km/h. | `45.5` |
@@ -26,13 +28,24 @@ Every packet sent to the server **must** contain the following fields:
 | `spo2` | Float/Number | Blood oxygen saturation percentage (50-100). | `98.5` |
 | `steps` | Integer | Daily cumulative steps count. | `5420` |
 
-**4. Example Payloads**
+**4. Example Payloads (Shortened & Optimized)**
 
-* **A. Combined GPS + Vitals Payload:**
+* **A. Vitals Only Payload (Wearable / Node001):**
+```json
+{
+  "device_uid": "Node001",
+  "battery": 92,
+  "heart_rate": 74,
+  "blood_pressure": "118/76",
+  "spo2": 99.0,
+  "steps": 6250
+}
+```
+
+* **B. Combined GPS + Vitals Payload:**
 ```json
 {
   "device_uid": "8654020409",
-  "name": "Delivery Van 1",
   "lat": 13.0827,
   "lon": 80.2707,
   "speed": 45.5,
@@ -44,37 +57,22 @@ Every packet sent to the server **must** contain the following fields:
 }
 ```
 
-* **B. Vitals Only Payload (Wearables & Smart Bands):**
+* **C. Partial Vitals (e.g. Heart Rate sensor unmeasured/omitted):**
 ```json
 {
-  "device_uid": "HEALTH:8801",
-  "name": "Smart Band Pro",
-  "battery": 92,
-  "heart_rate": 74,
-  "blood_pressure": "118/76",
-  "spo2": 99.0,
-  "steps": 6250
-}
-```
-
-* **C. Partial Vitals (e.g. Heart Rate sensor off/unmeasured):**
-```json
-{
-  "device_uid": "ID:001",
-  "name": "Tracker-001",
+  "device_uid": "Node001",
   "blood_pressure": "125/82",
   "spo2": 98.0,
   "steps": 3400
 }
 ```
-*(Notice: Any metric omitted from the payload will be safely stored as null and presented as an empty dash in the frontend logs and dashboard.)*
+*(Notice: Any metric omitted from the payload is stored as null and presented cleanly as an empty dash `—` in logs and the dashboard.)*
 
-**5. Security & Validation Rules (CRITICAL)**
-The backend employs a strict security validation process. When the server receives a packet, it checks the database for an active device matching **BOTH** the `device_uid` AND the `name`.
-*   If both match exactly: The data is accepted and logged.
-*   If there is a mismatch (e.g., the UID is correct but the name is wrong): The server will **reject and drop the payload completely** to prevent unauthorized data spoofing.
+**5. Validation & Device Matching**
+The server validates incoming packets against active devices in the database matching `device_uid` (or alias name). If an active registered device is found, the data is accepted and the server resolves the registered device name for WebSockets and UI logs.
 
 **6. Server Acknowledgment**
-Upon successfully validating and saving the JSON payload, the server will reply to the tracker over the TCP socket with an acknowledgment string in the following format:
-`ACK,[device_uid]#\n` *(Example: `ACK,8654020409#\n`)*
+Upon successful validation, the server replies over TCP or HTTP:
+`ACK,[device_uid]#\n` *(Example: `ACK,Node001#\n`)*
+
 

@@ -35,7 +35,8 @@ function parseIntOrNull(val) {
 
 // Process and store incoming vitals data (handles partial vitals e.g. missing HR)
 function processVitalsPayload(payload, deviceRow) {
-    const { device_uid, name } = payload;
+    const device_uid = (deviceRow && deviceRow.device_uid) || payload.device_uid || payload.id;
+    const name = (deviceRow && deviceRow.name) || payload.name || device_uid;
     
     // Check if any vitals metric is present in the payload
     const hasVitals = (
@@ -135,23 +136,26 @@ const tcpServer = net.createServer((socket) => {
             return;
         }
 
-        if (payload && payload.device_uid && payload.name) {
-            const { device_uid, name, lat, lon, speed, battery } = payload;
+        const device_uid = payload && (payload.device_uid || payload.id);
 
-            // Strict Validation: Ensure BOTH device_uid and name match the registered database entry
-            db.get(`SELECT * FROM devices WHERE device_uid = ? AND name = ? AND status = 'Active'`, [device_uid, name], (err, row) => {
+        if (payload && device_uid) {
+            // Validation: Ensure device identifier matches an active registered device
+            db.get(`SELECT * FROM devices WHERE (device_uid = ? OR name = ?) AND status = 'Active'`, [device_uid, device_uid], (err, row) => {
                 if (err) {
                     console.error('DB Error:', err);
                     return;
                 }
 
                 if (row) {
-                    console.log(`Security Validation Passed: Device ${name} (${device_uid}) is valid and matched.`);
+                    const targetUid = row.device_uid;
+                    const devName = row.name || targetUid;
+                    console.log(`Validation Passed: Device ${devName} (${targetUid}) is valid.`);
                     
                     // 1. Process Vitals if present
                     processVitalsPayload(payload, row);
 
                     // 2. Process GPS Telemetry if coordinates are present
+                    const { lat, lon, speed, battery } = payload;
                     const hasCoordinates = (lat !== undefined && lon !== undefined && lat !== null && lon !== null);
                     if (hasCoordinates) {
                         let latitude = parseFloat(lat);
@@ -162,10 +166,10 @@ const tcpServer = net.createServer((socket) => {
                         const now = Date.now();
                         let shouldSaveToDb = false;
 
-                        if (!deviceStateCache.has(device_uid)) {
+                        if (!deviceStateCache.has(targetUid)) {
                             shouldSaveToDb = true;
                         } else {
-                            const lastState = deviceStateCache.get(device_uid);
+                            const lastState = deviceStateCache.get(targetUid);
                             const timeDiff = now - lastState.lastSaveTime;
                             const distDiff = getDistanceFromLatLonInMeters(lastState.lat, lastState.lon, latitude, longitude);
                             
@@ -177,8 +181,8 @@ const tcpServer = net.createServer((socket) => {
 
                         // Emit to WebSocket instantly for perfect frontend smoothing
                         const eventData = {
-                            id: device_uid,
-                            name: name,
+                            id: targetUid,
+                            name: devName,
                             lat: latitude,
                             lon: longitude,
                             speed: speedVal,
@@ -190,7 +194,7 @@ const tcpServer = net.createServer((socket) => {
 
                         // Decimate DB Writes for GPS
                         if (shouldSaveToDb) {
-                            deviceStateCache.set(device_uid, {
+                            deviceStateCache.set(targetUid, {
                                 lat: latitude,
                                 lon: longitude,
                                 lastSaveTime: now
@@ -199,28 +203,28 @@ const tcpServer = net.createServer((socket) => {
                             db.run(`
                                 INSERT INTO telemetry_logs (device_uid, latitude, longitude, speed, battery_percentage)
                                 VALUES (?, ?, ?, ?, ?)
-                            `, [device_uid, latitude, longitude, speedVal, battery_percentage], function(err) {
+                            `, [targetUid, latitude, longitude, speedVal, battery_percentage], function(err) {
                                 if (err) console.error('Error inserting telemetry log:', err);
                             });
 
                             db.run(`
                                 UPDATE devices SET last_seen = CURRENT_TIMESTAMP, battery_percentage = ?, last_lat = ?, last_lon = ? WHERE device_uid = ?
-                            `, [battery_percentage, latitude, longitude, device_uid], function(updateErr) {
+                            `, [battery_percentage, latitude, longitude, targetUid], function(updateErr) {
                                 if (updateErr) console.error('Error updating device last_seen:', updateErr);
                             });
-                            console.log(`[DB SAVE] Decimated data saved to disk for ${name}`);
+                            console.log(`[DB SAVE] Decimated data saved to disk for ${devName}`);
                         }
                     }
 
                     // 3. ALWAYS acknowledge hardware instantly
-                    socket.write(`ACK,${device_uid}#\n`);
+                    socket.write(`ACK,${targetUid}#\n`);
 
                 } else {
-                    console.log(`Security Validation Failed: No active device found matching UID '${device_uid}' and Name '${name}'.`);
+                    console.log(`Validation Failed: No active device found matching identifier '${device_uid}'.`);
                 }
             });
         } else {
-            console.log('Invalid payload missing device_uid or name.');
+            console.log('Invalid payload: missing device identifier (device_uid).');
         }
     });
 
@@ -260,20 +264,22 @@ app.use(express.json()); // Enable JSON parsing for API requests
 // Hardware HTTP Tracker Endpoint (Supports GPS Telemetry + Health Vitals)
 app.post('/api/tracker/update', (req, res) => {
     const payload = req.body;
+    const device_uid = payload && (payload.device_uid || payload.id);
     
-    if (payload && payload.device_uid && payload.name) {
-        const { device_uid, name, lat, lon, speed, battery } = payload;
-
-        db.get(`SELECT * FROM devices WHERE device_uid = ? AND name = ? AND status = 'Active'`, [device_uid, name], (err, row) => {
+    if (payload && device_uid) {
+        db.get(`SELECT * FROM devices WHERE (device_uid = ? OR name = ?) AND status = 'Active'`, [device_uid, device_uid], (err, row) => {
             if (err) return res.status(500).json({ error: 'DB Error' });
 
             if (row) {
-                console.log(`Security Validation Passed (HTTP): Device ${name} (${device_uid})`);
+                const targetUid = row.device_uid;
+                const devName = row.name || targetUid;
+                console.log(`Validation Passed (HTTP): Device ${devName} (${targetUid})`);
                 
                 // 1. Process Vitals if included
                 processVitalsPayload(payload, row);
 
                 // 2. Process GPS Telemetry if coordinates included
+                const { lat, lon, speed, battery } = payload;
                 const hasCoordinates = (lat !== undefined && lon !== undefined && lat !== null && lon !== null);
                 if (hasCoordinates) {
                     let latitude = parseFloat(lat);
@@ -284,10 +290,10 @@ app.post('/api/tracker/update', (req, res) => {
                     const now = Date.now();
                     let shouldSaveToDb = false;
 
-                    if (!deviceStateCache.has(device_uid)) {
+                    if (!deviceStateCache.has(targetUid)) {
                         shouldSaveToDb = true;
                     } else {
-                        const lastState = deviceStateCache.get(device_uid);
+                        const lastState = deviceStateCache.get(targetUid);
                         const timeDiff = now - lastState.lastSaveTime;
                         const distDiff = getDistanceFromLatLonInMeters(lastState.lat, lastState.lon, latitude, longitude);
                         
@@ -297,8 +303,8 @@ app.post('/api/tracker/update', (req, res) => {
                     }
 
                     const eventData = {
-                        id: device_uid,
-                        name: name,
+                        id: targetUid,
+                        name: devName,
                         lat: latitude,
                         lon: longitude,
                         speed: speedVal,
@@ -309,52 +315,53 @@ app.post('/api/tracker/update', (req, res) => {
                     io.emit('device_moved', eventData);
 
                     if (shouldSaveToDb) {
-                        deviceStateCache.set(device_uid, {
+                        deviceStateCache.set(targetUid, {
                             lat: latitude,
                             lon: longitude,
                             lastSaveTime: now
                         });
 
                         db.run(`INSERT INTO telemetry_logs (device_uid, latitude, longitude, speed, battery_percentage) VALUES (?, ?, ?, ?, ?)`, 
-                            [device_uid, latitude, longitude, speedVal, battery_percentage]);
+                            [targetUid, latitude, longitude, speedVal, battery_percentage]);
 
                         db.run(`UPDATE devices SET last_seen = CURRENT_TIMESTAMP, battery_percentage = ?, last_lat = ?, last_lon = ? WHERE device_uid = ?`, 
-                            [battery_percentage, latitude, longitude, device_uid]);
+                            [battery_percentage, latitude, longitude, targetUid]);
                         
-                        console.log(`[DB SAVE] Decimated data saved to disk for ${name} via HTTP`);
+                        console.log(`[DB SAVE] Decimated data saved to disk for ${devName} via HTTP`);
                     }
                 }
 
-                return res.send(`ACK,${device_uid}#\n`);
+                return res.send(`ACK,${targetUid}#\n`);
             } else {
-                return res.status(401).send('Security Validation Failed');
+                return res.status(401).send('Validation Failed: Device not found or inactive');
             }
         });
     } else {
-        return res.status(400).send('Invalid payload');
+        return res.status(400).send('Invalid payload: device_uid is required');
     }
 });
 
 // Dedicated HTTP Endpoint for Health Vitals updates (BP, SpO2, Heart Rate, Steps)
 app.post('/api/vitals/update', (req, res) => {
     const payload = req.body;
+    const device_uid = payload && (payload.device_uid || payload.id);
     
-    if (payload && payload.device_uid && payload.name) {
-        const { device_uid, name } = payload;
-
-        db.get(`SELECT * FROM devices WHERE device_uid = ? AND name = ? AND status = 'Active'`, [device_uid, name], (err, row) => {
+    if (payload && device_uid) {
+        db.get(`SELECT * FROM devices WHERE (device_uid = ? OR name = ?) AND status = 'Active'`, [device_uid, device_uid], (err, row) => {
             if (err) return res.status(500).json({ error: 'DB Error' });
 
             if (row) {
-                console.log(`Security Validation Passed (Vitals HTTP): Device ${name} (${device_uid})`);
+                const targetUid = row.device_uid;
+                const devName = row.name || targetUid;
+                console.log(`Validation Passed (Vitals HTTP): Device ${devName} (${targetUid})`);
                 const vitalsResult = processVitalsPayload(payload, row);
                 return res.json({ success: true, message: 'Vitals logged successfully', data: vitalsResult });
             } else {
-                return res.status(401).json({ error: 'Security Validation Failed: Device not found or inactive' });
+                return res.status(401).json({ error: 'Validation Failed: Device not found or inactive' });
             }
         });
     } else {
-        return res.status(400).json({ error: 'Invalid payload: device_uid and name are required' });
+        return res.status(400).json({ error: 'Invalid payload: device_uid is required' });
     }
 });
 

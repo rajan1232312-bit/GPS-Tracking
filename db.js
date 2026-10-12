@@ -71,7 +71,8 @@ const memoryStore = {
     devices: [
         { id: 1, device_uid: '8654020409', name: 'Delivery Van 1', type: 'Car', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 85, last_lat: 13.0827, last_lon: 80.2707 },
         { id: 2, device_uid: 'ID:001', name: 'Tracker-001', type: 'Health Band', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 95, last_lat: 13.1166, last_lon: 80.1000 },
-        { id: 3, device_uid: 'HEALTH:8801', name: 'Smart Band Pro', type: 'Wearable', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 90, last_lat: 13.0850, last_lon: 80.2750 }
+        { id: 3, device_uid: 'HEALTH:8801', name: 'Smart Band Pro', type: 'Wearable', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 90, last_lat: 13.0850, last_lon: 80.2750 },
+        { id: 4, device_uid: 'Node001', name: 'Node001', type: 'Health Band', status: 'Active', last_seen: null, battery_percentage: 100, last_lat: 13.0827, last_lon: 80.2707 }
     ],
     telemetry_logs: [
         { id: 1, device_uid: '8654020409', latitude: 13.0827, longitude: 80.2707, speed: 35.5, battery_percentage: 85, timestamp: new Date().toISOString() }
@@ -206,9 +207,9 @@ const db = {
         const cleanQuery = query.trim().toUpperCase();
         let result = null;
 
-        if (cleanQuery.includes('FROM DEVICES') && cleanQuery.includes('DEVICE_UID = ? AND NAME = ?')) {
-            const [uid, name] = params;
-            result = memoryStore.devices.find(d => d.device_uid === uid && d.name === name && d.status === 'Active') || null;
+        if (cleanQuery.includes('FROM DEVICES') && (cleanQuery.includes('DEVICE_UID = ?') || cleanQuery.includes('DEVICE_UID') || cleanQuery.includes('NAME = ?'))) {
+            const uid = params[0];
+            result = memoryStore.devices.find(d => (d.device_uid === uid || d.name === uid) && d.status === 'Active') || null;
         } else if (cleanQuery.includes('COUNT(*)') && cleanQuery.includes('FROM TELEMETRY_LOGS')) {
             const uid = params[0];
             const logs = uid && uid !== 'all' ? memoryStore.telemetry_logs.filter(l => l.device_uid === uid) : memoryStore.telemetry_logs;
