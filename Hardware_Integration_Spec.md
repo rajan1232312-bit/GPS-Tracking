@@ -2,17 +2,22 @@
 
 ## 1. Network Connection Endpoints
 
+* **Cloud Production Endpoints (Live over Internet):**
+  * **Base URL:** `https://gps-tracking-1-1gkx.onrender.com`
+  * **Unified GPS + Vitals Update:** `POST https://gps-tracking-1-1gkx.onrender.com/api/tracker/update`
+  * **Vitals Only Update:** `POST https://gps-tracking-1-1gkx.onrender.com/api/vitals/update`
+  * **Headers:** `Content-Type: application/json`
+
+* **Local LAN / Development Endpoints (On-Premises Wi-Fi):**
+  * **Base URL:** `http://192.168.1.213:5001`
+  * **Unified GPS + Vitals Update:** `POST http://192.168.1.213:5001/api/tracker/update`
+  * **Vitals Only Update:** `POST http://192.168.1.213:5001/api/vitals/update`
+
 * **Raw TCP Socket (Recommended for GSM & LoRa Gateway Bridges):**
   * **Target IP (LAN / Wi-Fi):** `192.168.1.213`
   * **Target Port:** `5000`
   * *Example Socket Endpoint:* `192.168.1.213:5000`
   * *WAN / Remote:* Replace with Public IP or Tunnel Host.
-
-* **HTTP REST Endpoints (Recommended for Wi-Fi & Cellular HTTP):**
-  * **Base URL:** `http://192.168.1.213:5001`
-  * **Unified GPS + Vitals Update:** `POST http://192.168.1.213:5001/api/tracker/update`
-  * **Vitals Only Update:** `POST http://192.168.1.213:5001/api/vitals/update`
-  * **Headers:** `Content-Type: application/json`
 
 ---
 
