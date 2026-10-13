@@ -1,78 +1,151 @@
-# 📡 GPS & Vitals Hardware Integration Specification
+# 📡 GPS & Vitals Hardware Integration Specification (v2.0)
 
-**1. Connection Protocols**
-*   **Raw TCP Socket:** Target Port `5000` (e.g. `192.168.1.213:5000`)
-*   **HTTP REST Endpoints:** 
-    *   GPS + Vitals: `POST /api/tracker/update`
-    *   Vitals Only: `POST /api/vitals/update`
+## 1. Network Connection Endpoints
 
-**2. Payload Format**
-The tracker/node must send data as a **compact JSON string** over TCP or HTTP.
+* **Raw TCP Socket (Recommended for GSM & LoRa Gateway Bridges):**
+  * **Target IP (LAN / Wi-Fi):** `192.168.1.213`
+  * **Target Port:** `5000`
+  * *Example Socket Endpoint:* `192.168.1.213:5000`
+  * *WAN / Remote:* Replace with Public IP or Tunnel Host.
 
-**3. Required JSON Structure**
-To keep packet payloads minimal for microcontrollers (ESP32, GSM/GPRS modules, smart bands), only the device identifier (`device_uid`) is required. The `name` field has been **completely removed from the payload and system**, and the `device_uid` (identifier) acts directly as the device's name.
+* **HTTP REST Endpoints (Recommended for Wi-Fi & Cellular HTTP):**
+  * **Base URL:** `http://192.168.1.213:5001`
+  * **Unified GPS + Vitals Update:** `POST http://192.168.1.213:5001/api/tracker/update`
+  * **Vitals Only Update:** `POST http://192.168.1.213:5001/api/vitals/update`
+  * **Headers:** `Content-Type: application/json`
 
-*The identifier does not need to be digits; it can be any string identifier, such as `"Node001"` or an IMEI.*
+---
 
-| Field | Type | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `device_uid` | String | The hardware identifier (or node name). **Required**. | `"Node001"` / `"8654020409"` |
-| `lat` | Float/Number | Latitude coordinates (Optional if sending vitals only). | `13.0827` |
-| `lon` | Float/Number | Longitude coordinates (Optional if sending vitals only). | `80.2707` |
-| `speed` | Float/Number | Current speed in km/h. | `45.5` |
-| `battery` | Integer | Battery percentage (0-100). | `85` |
-| `heart_rate` | Integer | Pulse / Heart Rate in BPM (Omit or null if not measured). | `76` |
-| `blood_pressure` | String | Systolic / Diastolic BP string (e.g., "120/80"). | `"120/80"` |
-| `bp_sys` | Integer | Systolic Blood Pressure in mmHg. | `120` |
-| `bp_dia` | Integer | Diastolic Blood Pressure in mmHg. | `80` |
-| `spo2` | Float/Number | Blood oxygen saturation percentage (50-100). | `98.5` |
-| `steps` | Integer | Daily cumulative steps count. | `5420` |
+## 2. Server Handshake & Acknowledgment
 
-**4. Example Payloads (Shortened & Optimized)**
-
-* **A. Vitals Only Payload (Wearable / Node001):**
-```json
-{
-  "device_uid": "Node001",
-  "battery": 92,
-  "heart_rate": 74,
-  "blood_pressure": "118/76",
-  "spo2": 99.0,
-  "steps": 6250
-}
+Upon receiving and validating each packet, the server replies immediately:
+```text
+ACK,[device_id]#\n
 ```
+* **Example:** `ACK,DEVICE_001#\n`
+* Microcontrollers can use this acknowledgment to confirm packet delivery and immediately transition into deep sleep.
 
-* **B. Combined GPS + Vitals Payload:**
+---
+
+## 3. Unified Hardware JSON Payload Specification
+
 ```json
 {
-  "device_uid": "8654020409",
-  "lat": 13.0827,
-  "lon": 80.2707,
-  "speed": 45.5,
-  "battery": 85,
-  "heart_rate": 76,
-  "blood_pressure": "120/80",
-  "spo2": 98.5,
-  "steps": 4520
-}
-```
-
-* **C. Partial Vitals (e.g. Heart Rate sensor unmeasured/omitted):**
-```json
-{
-  "device_uid": "Node001",
-  "blood_pressure": "125/82",
+  "device_id": "DEVICE_001",
+  "transport_mode": 0,
+  "gps_status": 1,
+  "latitude": 13.124505,
+  "longitude": 80.094435,
+  "speed": 12.5,
+  "watch_status": 1,
+  "watch_battery": 50.0,
+  "hr": 86,
   "spo2": 98.0,
-  "steps": 3400
+  "bp_sys": 125,
+  "bp_dia": 68,
+  "steps": 7300
 }
 ```
-*(Notice: Any metric omitted from the payload is stored as null and presented cleanly as an empty dash `—` in logs and the dashboard.)*
 
-**5. Validation & Device Matching**
-The server validates incoming packets against active devices in the database matching `device_uid`. If an active registered device is found, the data is accepted and the identifier directly represents the device in WebSockets and UI logs.
+### Complete Field Dictionary
 
-**6. Server Acknowledgment**
-Upon successful validation, the server replies over TCP or HTTP:
-`ACK,[device_uid]#\n` *(Example: `ACK,Node001#\n`)*
+| Field | Type | Mandatory? | Allowed Values | Description / Rules |
+| :--- | :--- | :--- | :--- | :--- |
+| `device_id` | String | **Yes** | Alphanumeric (e.g. `"DEVICE_001"`, IMEI) | Hardware node identifier. Aliased to `device_uid`. |
+| `transport_mode`| Integer | **Yes** | `0`, `1`, `2` | `0` = LoRa / Meshtastic<br/>`1` = GSM / Cellular<br/>`2` = Wi-Fi |
+| `gps_status` | Integer | **Yes** | `0`, `1` | `0` = Disconnected / Searching for satellites<br/>`1` = Connected / GPS 2D/3D Lock |
+| `latitude` / `lat` | Float | Optional | `-90.0` to `+90.0` or `-1` | GPS Latitude in decimal degrees. Send `-1` if no GPS fix. |
+| `longitude` / `lon`| Float | Optional | `-180.0` to `+180.0` or `-1`| GPS Longitude in decimal degrees. Send `-1` if no GPS fix. |
+| `speed` | Float | Optional | `>= 0.0` | Speed in km/h. Defaults to `0` if omitted. |
+| `watch_status` | Integer | **Yes** | `0`, `1` | `0` = Smartwatch Disconnected / Off-wrist<br/>`1` = Smartwatch Connected & Paired |
+| `watch_battery` | Float | Optional | `0.0` – `100.0` or `-1` | Smartwatch battery percentage. Send `-1` if unknown. |
+| `hr` | Integer | Optional | `30` – `220` or `-1` | Heart rate in BPM. Send `-1` if unmeasured. |
+| `spo2` | Float | Optional | `50.0` – `100.0` or `-1` | Blood oxygen level in %. Send `-1` if unmeasured. |
+| `bp_sys` | Integer | Optional | `70` – `200` or `-1` | Systolic blood pressure in mmHg. Send `-1` if unmeasured. |
+| `bp_dia` | Integer | Optional | `40` – `130` or `-1` | Diastolic blood pressure in mmHg. Send `-1` if unmeasured. |
+| `bp` | String | Optional | e.g. `"125/68"` | Optional pre-formatted BP string (parsed automatically). |
+| `steps` | Integer | Optional | `>= 0` or `-1` | Cumulative daily steps count. Send `-1` if unavailable. |
 
+---
 
+## 4. Hardware Sentinel Rule (`-1` Standard)
+
+> [!IMPORTANT]
+> **Any sensor metric that is disconnected, currently measuring, or unknown MUST be sent as `-1`.**
+> * The server automatically sanitizes `-1` into `NULL` in the database.
+> * The frontend renders `NULL` cleanly as an empty dash `—` (preventing false readings like `0 BPM` or `-1%`).
+
+---
+
+## 5. Sample Payloads
+
+### Scenario A: Full Telemetry & Vitals via LoRa (Transport 0)
+```json
+{
+  "device_id": "DEVICE_001",
+  "transport_mode": 0,
+  "gps_status": 1,
+  "latitude": 13.124505,
+  "longitude": 80.094435,
+  "speed": 0.0,
+  "watch_status": 1,
+  "watch_battery": 82.5,
+  "hr": 74,
+  "spo2": 99.0,
+  "bp_sys": 118,
+  "bp_dia": 76,
+  "steps": 4820
+}
+```
+
+### Scenario B: Outdoor GPS Only via GSM (Smartwatch Disconnected)
+```json
+{
+  "device_id": "DEVICE_001",
+  "transport_mode": 1,
+  "gps_status": 1,
+  "latitude": 13.125100,
+  "longitude": 80.095200,
+  "speed": 34.2,
+  "watch_status": 0,
+  "watch_battery": -1,
+  "hr": -1,
+  "spo2": -1,
+  "bp_sys": -1,
+  "bp_dia": -1,
+  "steps": -1
+}
+```
+
+### Scenario C: Indoor Vitals Only via Wi-Fi (No GPS Fix)
+```json
+{
+  "device_id": "DEVICE_001",
+  "transport_mode": 2,
+  "gps_status": 0,
+  "latitude": -1,
+  "longitude": -1,
+  "speed": 0.0,
+  "watch_status": 1,
+  "watch_battery": 65.0,
+  "hr": 82,
+  "spo2": 97.5,
+  "bp_sys": 122,
+  "bp_dia": 79,
+  "steps": 6120
+}
+```
+
+---
+
+## 6. Device Registration Requirement
+
+Before sending data, ensure the `device_id` is registered in the system:
+* Register via Web UI: `http://192.168.1.213:5001/register.html`
+* Or via API:
+  ```bash
+  curl -X POST http://192.168.1.213:5001/api/devices/register \
+       -H "Content-Type: application/json" \
+       -d '{"device_uid":"DEVICE_001","type":"Wearable"}'
+  ```
+Unregistered devices will be rejected with `Validation Failed: Device not found or inactive`.

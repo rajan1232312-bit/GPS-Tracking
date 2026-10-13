@@ -513,6 +513,15 @@
         .badge-spo2 { color: #7dd3fc; background: rgba(2, 132, 199, 0.1); border: 1px solid rgba(2, 132, 199, 0.2); }
         .badge-steps { color: #86efac; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); }
 
+        .badge-lora { color: #d8b4fe; background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.35); }
+        .badge-gsm { color: #60a5fa; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.35); }
+        .badge-wifi { color: #34d399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); }
+        .badge-gps-on { color: #34d399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); }
+        .badge-gps-off { color: #f87171; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); }
+        .badge-watch-on { color: #38bdf8; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); }
+        .badge-watch-off { color: #94a3b8; background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.35); }
+        .badge-wbatt { color: #facc15; background: rgba(250, 204, 21, 0.15); border: 1px solid rgba(250, 204, 21, 0.35); }
+
         .empty-dash {
             color: #64748b;
             font-weight: 600;
@@ -613,9 +622,21 @@
                     <span class="pulse-live-dot" id="meta-status-dot"></span>
                     <span>Status: <strong id="meta-status" style="color: #94a3b8;">Waiting for Data</strong></span>
                 </div>
-                <div class="meta-pill">
-                    <i class="fa-solid fa-battery-half" style="color: var(--accent-blue);"></i>
-                    <span>Battery: <strong id="meta-battery">--%</strong></span>
+                <div class="meta-pill" id="meta-pill-transport">
+                    <i class="fa-solid fa-tower-broadcast" style="color: #c084fc;"></i>
+                    <span>Transport: <strong id="meta-transport">—</strong></span>
+                </div>
+                <div class="meta-pill" id="meta-pill-gps">
+                    <i class="fa-solid fa-satellite" style="color: #34d399;"></i>
+                    <span>GPS: <strong id="meta-gps">—</strong></span>
+                </div>
+                <div class="meta-pill" id="meta-pill-watch">
+                    <i class="fa-solid fa-stopwatch-20" style="color: #38bdf8;"></i>
+                    <span>Watch: <strong id="meta-watch">—</strong></span>
+                </div>
+                <div class="meta-pill" id="meta-pill-watch-batt">
+                    <i class="fa-solid fa-bolt" style="color: #facc15;"></i>
+                    <span>Watch Batt: <strong id="meta-watch-battery">—</strong></span>
                 </div>
                 <div class="meta-pill">
                     <i class="fa-solid fa-clock-rotate-left"></i>
@@ -778,13 +799,16 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 70px;">Status</th>
-                            <th>Device Name</th>
+                            <th style="width: 50px;">Live</th>
                             <th>Device UID</th>
-                            <th>Blood Pressure (BP)</th>
-                            <th>SpO2 (%)</th>
-                            <th>Heart Rate (BPM)</th>
-                            <th>Steps Count</th>
+                            <th>Transport</th>
+                            <th>GPS Fix</th>
+                            <th>Watch</th>
+                            <th>Watch Batt</th>
+                            <th>Blood Pressure</th>
+                            <th>SpO2</th>
+                            <th>Heart Rate</th>
+                            <th>Steps</th>
                             <th>Timestamp</th>
                         </tr>
                     </thead>
@@ -916,6 +940,33 @@
             }
         }
 
+        // Helper badges for hardware status
+        function formatTransportBadge(tm) {
+            if (tm === 0 || tm === '0') return '<span class="vital-badge-inline badge-lora"><i class="fa-solid fa-tower-broadcast"></i> LoRa</span>';
+            if (tm === 1 || tm === '1') return '<span class="vital-badge-inline badge-gsm"><i class="fa-solid fa-signal"></i> GSM</span>';
+            if (tm === 2 || tm === '2') return '<span class="vital-badge-inline badge-wifi"><i class="fa-solid fa-wifi"></i> Wi-Fi</span>';
+            return '<span class="empty-dash">—</span>';
+        }
+
+        function formatGpsBadge(status) {
+            if (status === 1 || status === '1') return '<span class="vital-badge-inline badge-gps-on"><i class="fa-solid fa-satellite"></i> Locked</span>';
+            if (status === 0 || status === '0') return '<span class="vital-badge-inline badge-gps-off"><i class="fa-solid fa-satellite-dish"></i> No Fix</span>';
+            return '<span class="empty-dash">—</span>';
+        }
+
+        function formatWatchBadge(status) {
+            if (status === 1 || status === '1') return '<span class="vital-badge-inline badge-watch-on"><i class="fa-solid fa-stopwatch-20"></i> Paired</span>';
+            if (status === 0 || status === '0') return '<span class="vital-badge-inline badge-watch-off"><i class="fa-solid fa-slash"></i> Offline</span>';
+            return '<span class="empty-dash">—</span>';
+        }
+
+        function formatWatchBattery(val) {
+            if (val == null || val === '' || val === -1 || val === '-1') return '<span class="empty-dash">—</span>';
+            const num = parseFloat(val);
+            if (isNaN(num) || num < 0) return '<span class="empty-dash">—</span>';
+            return `<span class="vital-badge-inline badge-wbatt"><i class="fa-solid fa-bolt"></i> ${num.toFixed(1)}%</span>`;
+        }
+
         // Update 4 KPI Cards
         function updateCardMetrics(vitals) {
             if (!vitals) {
@@ -936,21 +987,38 @@
                     statusText.style.color = '#34d399';
                 }
                 document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
-                if (vitals.battery_percentage != null) {
-                    document.getElementById('meta-battery').textContent = `${vitals.battery_percentage}%`;
-                } else {
-                    document.getElementById('meta-battery').textContent = '--%';
+
+                // Hardware telemetry metadata
+                const transportElem = document.getElementById('meta-transport');
+                if (transportElem) {
+                    const tm = vitals.transport_mode !== undefined ? vitals.transport_mode : vitals.device_transport_mode;
+                    transportElem.innerHTML = formatTransportBadge(tm);
+                }
+
+                const gpsElem = document.getElementById('meta-gps');
+                if (gpsElem) {
+                    const gps = vitals.gps_status !== undefined ? vitals.gps_status : vitals.device_gps_status;
+                    gpsElem.innerHTML = formatGpsBadge(gps);
+                }
+
+                const watchElem = document.getElementById('meta-watch');
+                if (watchElem) {
+                    const ws = vitals.watch_status !== undefined ? vitals.watch_status : vitals.device_watch_status;
+                    watchElem.innerHTML = formatWatchBadge(ws);
+                }
+
+                const watchBattElem = document.getElementById('meta-watch-battery');
+                if (watchBattElem) {
+                    const wb = vitals.watch_battery !== undefined ? vitals.watch_battery : vitals.device_watch_battery;
+                    watchBattElem.innerHTML = formatWatchBattery(wb);
+                }
+
+                if (vitals.battery_percentage != null && vitals.battery_percentage !== -1) {
+                    const battElem = document.getElementById('meta-battery');
+                    if (battElem) battElem.textContent = `${vitals.battery_percentage}%`;
                 }
             } else {
-                if (statusDot) {
-                    statusDot.className = 'pulse-live-dot';
-                }
-                if (statusText) {
-                    statusText.textContent = 'Waiting for Data';
-                    statusText.style.color = '#94a3b8';
-                }
-                document.getElementById('meta-last-seen').textContent = 'Waiting for data...';
-                document.getElementById('meta-battery').textContent = '--%';
+                clearCardMetrics();
             }
 
             // 1. Blood Pressure (BP)
@@ -962,7 +1030,7 @@
             const bpTrack = document.getElementById('bp-progress-track');
             const bpProgress = document.getElementById('bp-progress');
 
-            if (vitals.blood_pressure && vitals.blood_pressure !== '—/—') {
+            if (vitals.blood_pressure && vitals.blood_pressure !== '—/—' && vitals.blood_pressure !== '-1/-1') {
                 bpValElem.textContent = vitals.blood_pressure;
                 bpNotice.style.display = 'none';
                 bpStatusBadge.className = 'status-pill status-optimal';
@@ -970,8 +1038,8 @@
 
                 const sys = vitals.blood_pressure_sys || (vitals.blood_pressure.split('/')[0]);
                 const dia = vitals.blood_pressure_dia || (vitals.blood_pressure.split('/')[1]);
-                bpSysText.textContent = sys || '—';
-                bpDiaText.textContent = dia || '—';
+                bpSysText.textContent = (sys && sys !== '-1') ? sys : '—';
+                bpDiaText.textContent = (dia && dia !== '-1') ? dia : '—';
 
                 bpTrack.style.display = 'block';
                 const pct = Math.min(100, Math.max(10, ((parseInt(sys) || 120) / 180) * 100));
@@ -994,7 +1062,7 @@
             const hrProgress = document.getElementById('hr-progress');
             const hrTimeElem = document.getElementById('hr-reading-time');
 
-            if (vitals.heart_rate != null && vitals.heart_rate !== '') {
+            if (vitals.heart_rate != null && vitals.heart_rate !== '' && vitals.heart_rate !== -1 && vitals.heart_rate !== '-1') {
                 hrValElem.textContent = vitals.heart_rate;
                 hrNotice.style.display = 'none';
                 const hr = parseInt(vitals.heart_rate, 10);
@@ -1029,7 +1097,7 @@
             const spo2Progress = document.getElementById('spo2-progress');
             const spo2Grade = document.getElementById('spo2-grade');
 
-            if (vitals.spo2 != null && vitals.spo2 !== '') {
+            if (vitals.spo2 != null && vitals.spo2 !== '' && vitals.spo2 !== -1 && vitals.spo2 !== '-1') {
                 const spo2 = parseFloat(vitals.spo2);
                 spo2ValElem.textContent = spo2.toFixed(1);
                 spo2Notice.style.display = 'none';
@@ -1062,7 +1130,7 @@
             const stepsDistElem = document.getElementById('steps-distance');
 
             const rawSteps = vitals.steps !== undefined ? vitals.steps : vitals.step_count;
-            if (rawSteps != null && rawSteps !== '') {
+            if (rawSteps != null && rawSteps !== '' && rawSteps !== -1 && rawSteps !== '-1') {
                 const stepsNum = parseInt(rawSteps, 10);
                 stepsValElem.textContent = stepsNum.toLocaleString();
                 stepsNotice.style.display = 'none';
@@ -1097,7 +1165,16 @@
                 statusText.style.color = '#94a3b8';
             }
             document.getElementById('meta-last-seen').textContent = 'Waiting for data...';
-            document.getElementById('meta-battery').textContent = '--%';
+            const battElem = document.getElementById('meta-battery');
+            if (battElem) battElem.textContent = '--%';
+            const transportElem = document.getElementById('meta-transport');
+            if (transportElem) transportElem.textContent = '—';
+            const gpsElem = document.getElementById('meta-gps');
+            if (gpsElem) gpsElem.textContent = '—';
+            const watchElem = document.getElementById('meta-watch');
+            if (watchElem) watchElem.textContent = '—';
+            const watchBattElem = document.getElementById('meta-watch-battery');
+            if (watchBattElem) watchBattElem.textContent = '—';
 
             document.getElementById('val-bp').textContent = '—';
             document.getElementById('bp-empty-notice').style.display = 'flex';
@@ -1131,28 +1208,36 @@
 
         // Create table row with missing values displayed as dashes
         function createVitalsRow(log, isNew = false) {
-            const bpDisplay = (log.blood_pressure && log.blood_pressure !== '—/—')
+            const bpDisplay = (log.blood_pressure && log.blood_pressure !== '—/—' && log.blood_pressure !== '-1/-1')
                 ? `<span class="vital-badge-inline badge-bp"><i class="fa-solid fa-gauge-simple-high"></i> ${escapeHtml(log.blood_pressure)}</span>`
                 : `<span class="empty-dash">—</span>`;
 
-            const spo2Display = (log.spo2 != null && log.spo2 !== '')
+            const spo2Display = (log.spo2 != null && log.spo2 !== '' && log.spo2 !== -1 && log.spo2 !== '-1')
                 ? `<span class="vital-badge-inline badge-spo2"><i class="fa-solid fa-droplet"></i> ${parseFloat(log.spo2).toFixed(1)}%</span>`
                 : `<span class="empty-dash">—</span>`;
 
-            const hrDisplay = (log.heart_rate != null && log.heart_rate !== '')
+            const hrDisplay = (log.heart_rate != null && log.heart_rate !== '' && log.heart_rate !== -1 && log.heart_rate !== '-1')
                 ? `<span class="vital-badge-inline badge-hr"><i class="fa-solid fa-heart"></i> ${log.heart_rate} bpm</span>`
                 : `<span class="empty-dash">—</span>`;
 
             const rawSteps = log.steps !== undefined ? log.steps : log.step_count;
-            const stepsDisplay = (rawSteps != null && rawSteps !== '')
+            const stepsDisplay = (rawSteps != null && rawSteps !== '' && rawSteps !== -1 && rawSteps !== '-1')
                 ? `<span class="vital-badge-inline badge-steps"><i class="fa-solid fa-person-walking"></i> ${Number(rawSteps).toLocaleString()}</span>`
                 : `<span class="empty-dash">—</span>`;
+
+            const transportBadge = formatTransportBadge(log.transport_mode);
+            const gpsBadge = formatGpsBadge(log.gps_status);
+            const watchBadge = formatWatchBadge(log.watch_status);
+            const watchBatteryDisplay = formatWatchBattery(log.watch_battery);
 
             return `
                 <tr class="${isNew ? 'new-row' : ''}">
                     <td><span class="live-dot" style="display: inline-block;"></span></td>
-                    <td style="font-weight: 500; color: #f8fafc;">${escapeHtml(log.device_name || 'Unknown Device')}</td>
                     <td><span class="uid-badge">${escapeHtml(log.device_uid)}</span></td>
+                    <td>${transportBadge}</td>
+                    <td>${gpsBadge}</td>
+                    <td>${watchBadge}</td>
+                    <td>${watchBatteryDisplay}</td>
                     <td>${bpDisplay}</td>
                     <td>${spo2Display}</td>
                     <td>${hrDisplay}</td>
@@ -1191,6 +1276,10 @@
                 const newRowHtml = createVitalsRow({
                     device_name: data.name,
                     device_uid: devUid,
+                    transport_mode: data.transport_mode,
+                    gps_status: data.gps_status,
+                    watch_status: data.watch_status,
+                    watch_battery: data.watch_battery,
                     blood_pressure: data.blood_pressure,
                     spo2: data.spo2,
                     heart_rate: data.heart_rate,
