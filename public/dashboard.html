@@ -831,12 +831,10 @@
                 <div class="form-group">
                     <label>Vehicle / Device Type</label>
                     <select id="add-tracker-type">
+                        <option value="Person">Person</option>
                         <option value="Car">Car</option>
                         <option value="Truck">Truck</option>
                         <option value="Bike">Bike</option>
-                        <option value="Person">Person</option>
-                        <option value="Wearable">Wearable</option>
-                        <option value="Health Band">Health Band</option>
                     </select>
                 </div>
                 <button type="submit" class="submit-btn">Register Device</button>
@@ -860,12 +858,10 @@
                 <div class="form-group">
                     <label>Vehicle / Device Type</label>
                     <select id="edit-tracker-type" required style="width:100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;">
+                        <option value="Person">Person</option>
                         <option value="Car">Car</option>
                         <option value="Truck">Truck</option>
                         <option value="Bike">Bike</option>
-                        <option value="Person">Person</option>
-                        <option value="Wearable">Wearable</option>
-                        <option value="Health Band">Health Band</option>
                     </select>
                 </div>
                 <button type="submit" class="submit-btn">Save Changes</button>
@@ -1032,10 +1028,23 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         // Premium Date Formatter
-        function formatDatePremium(dateString) {
-            if (!dateString) return 'Unknown';
-            const date = new Date(dateString);
-            if (isNaN(date)) return 'Unknown';
+        function formatDatePremium(dateInput) {
+            if (!dateInput) return 'Unknown';
+            let date;
+            if (dateInput instanceof Date) {
+                date = dateInput;
+            } else {
+                let str = String(dateInput).trim();
+                while (str.endsWith('ZZ')) str = str.slice(0, -1);
+                if (!str.endsWith('Z') && !str.includes('+') && !str.match(/-\d{2}:\d{2}$/)) {
+                    str = str.replace(' ', 'T') + 'Z';
+                }
+                date = new Date(str);
+                if (isNaN(date.getTime())) {
+                    date = new Date(dateInput);
+                }
+            }
+            if (isNaN(date.getTime())) return 'Unknown';
             const day = String(date.getDate()).padStart(2, '0');
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             const month = monthNames[date.getMonth()];
@@ -1142,11 +1151,11 @@
 
         function getIconClass(type) {
             switch(type) {
+                case 'Person':
+                case 'Wearable':
+                case 'Health Band': return 'fa-person';
                 case 'Truck': return 'fa-truck';
                 case 'Bike': return 'fa-motorcycle';
-                case 'Person': return 'fa-person';
-                case 'Wearable':
-                case 'Health Band': return 'fa-heart-pulse';
                 default: return 'fa-car';
             }
         }
@@ -1477,16 +1486,18 @@
         socket.on('device_moved', (data) => {
             console.log('Received real-time update:', data);
 
-            // Update UI Sidebar Status
+            // Update UI Sidebar Status to Online
             let deviceItem = document.getElementById('sidebar-dev-' + data.id);
             if (!deviceItem) {
                 const list = document.getElementById('sidebar-device-list');
                 const html = `
-                    <div class="device-item" id="sidebar-dev-${data.id}">
-                        <div class="device-icon"><i class="fa-solid fa-location-dot"></i></div>
+                    <div class="device-item" id="sidebar-dev-${data.id}" onclick="openDeviceDetails('${data.id}')">
+                        <div class="device-icon" style="color: var(--success);"><i class="fa-solid ${getIconClass(data.type)}"></i></div>
                         <div class="device-info">
                             <div class="device-name">${data.id}</div>
-                            <div class="device-status" id="sidebar-dev-time-${data.id}">Online</div>
+                            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                <span class="device-status" id="sidebar-dev-time-${data.id}">Online</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1496,10 +1507,22 @@
                 if (statusEl) {
                     statusEl.innerText = 'Online';
                     statusEl.classList.remove('error');
-                    
-                    let iconEl = deviceItem.querySelector('.device-icon');
-                    if(iconEl) iconEl.style.color = 'var(--success)';
                 }
+                let iconEl = deviceItem.querySelector('.device-icon');
+                if (iconEl) iconEl.style.color = 'var(--success)';
+            }
+
+            // Update Table Status Badge to Online
+            const tableStatusBadge = document.getElementById(`table-status-${data.id}`);
+            if (tableStatusBadge) {
+                tableStatusBadge.className = 'status-badge online';
+                tableStatusBadge.textContent = 'Online';
+            }
+
+            // Update Table Battery if present
+            if (data.battery != null && data.battery !== -1) {
+                const tableBatt = document.getElementById(`battery-table-${data.id}`);
+                if (tableBatt) tableBatt.textContent = `${Math.round(data.battery)}%`;
             }
 
             // Setup Marker & Tracker
@@ -1557,6 +1580,12 @@
             // 3. Update Details Modal if open for this device
             const detailsUid = document.getElementById('details-uid-display');
             if(detailsUid && detailsUid.textContent === data.id) {
+                const detailsStatusVal = document.getElementById('details-status-val');
+                if (detailsStatusVal) {
+                    detailsStatusVal.textContent = 'Online';
+                    detailsStatusVal.style.color = 'var(--success)';
+                }
+
                 const detailsLoc = document.getElementById('details-location');
                 if(detailsLoc) detailsLoc.textContent = `${data.lat.toFixed(5)}, ${data.lon.toFixed(5)}`;
                 
@@ -1586,6 +1615,74 @@
                 if (data.watch_battery !== undefined && data.watch_battery !== null && data.watch_battery !== -1) {
                     const wbEl = document.getElementById('details-watch-batt');
                     if (wbEl) wbEl.textContent = `${Number(data.watch_battery).toFixed(1)}%`;
+                }
+            }
+        });
+
+        // Hook for real-time vitals updates
+        socket.on('vitals_updated', (data) => {
+            const devId = data.device_uid || data.id;
+            if (!devId) return;
+            console.log('Received real-time vitals update:', devId, data);
+
+            // 1. Update UI Sidebar Status to Online
+            let deviceItem = document.getElementById('sidebar-dev-' + devId);
+            if (deviceItem) {
+                let statusEl = document.getElementById('sidebar-dev-time-' + devId);
+                if (statusEl) {
+                    statusEl.innerText = 'Online';
+                    statusEl.classList.remove('error');
+                }
+                let iconEl = deviceItem.querySelector('.device-icon');
+                if (iconEl) iconEl.style.color = 'var(--success)';
+            }
+
+            // 2. Update Table Status Badge to Online
+            const tableStatusBadge = document.getElementById(`table-status-${devId}`);
+            if (tableStatusBadge) {
+                tableStatusBadge.className = 'status-badge online';
+                tableStatusBadge.textContent = 'Online';
+            }
+
+            // 3. Update Table Last Seen
+            const lastSeenFormatted = formatDatePremium(data.timestamp);
+            const tableLastSeenTime = document.getElementById(`last-seen-time-${devId}`);
+            if (tableLastSeenTime) tableLastSeenTime.textContent = lastSeenFormatted;
+
+            // 4. Update Table Battery
+            const wb = data.watch_battery;
+            if (wb !== undefined && wb !== null && wb !== -1) {
+                const tableBatt = document.getElementById(`battery-table-${devId}`);
+                if (tableBatt) tableBatt.textContent = `${Math.round(wb)}%`;
+            }
+
+            // 5. Update Details Modal if open for this device
+            const detailsUid = document.getElementById('details-uid-display');
+            if (detailsUid && detailsUid.textContent === devId) {
+                const detailsStatusVal = document.getElementById('details-status-val');
+                if (detailsStatusVal) {
+                    detailsStatusVal.textContent = 'Online';
+                    detailsStatusVal.style.color = 'var(--success)';
+                }
+
+                const detailsLastSeenTime = document.getElementById('details-last-seen-time');
+                if (detailsLastSeenTime) detailsLastSeenTime.textContent = lastSeenFormatted;
+
+                if (data.transport_mode !== undefined && data.transport_mode !== null) {
+                    const transportEl = document.getElementById('details-transport');
+                    if (transportEl) transportEl.innerHTML = formatTransportDetails(data.transport_mode);
+                }
+                if (data.gps_status !== undefined && data.gps_status !== null) {
+                    const gpsEl = document.getElementById('details-gps');
+                    if (gpsEl) gpsEl.innerHTML = formatGpsDetails(data.gps_status);
+                }
+                if (data.watch_status !== undefined && data.watch_status !== null) {
+                    const watchEl = document.getElementById('details-watch');
+                    if (watchEl) watchEl.innerHTML = formatWatchDetails(data.watch_status);
+                }
+                if (wb !== undefined && wb !== null && wb !== -1) {
+                    const wbEl = document.getElementById('details-watch-batt');
+                    if (wbEl) wbEl.textContent = `${Number(wb).toFixed(1)}%`;
                 }
             }
         });
@@ -1701,7 +1798,7 @@
                                     ${watchHtml}
                                 </div>
                             </div>
-                            <div class="edit-btn" onclick="editDevice(event, '${device.device_uid}', '${device.type || 'Car'}')" title="Edit Tracker">
+                            <div class="edit-btn" onclick="editDevice(event, '${device.device_uid}', '${device.type || 'Person'}')" title="Edit Tracker">
                                 <i class="fa-solid fa-pen"></i>
                             </div>
                             <div class="delete-btn" onclick="deleteDevice(event, '${device.device_uid}')" title="Delete Tracker">
@@ -1714,15 +1811,15 @@
                     // Populate Devices Table
                     if(tableBody) {
                         const battery = device.battery_percentage || 0;
-                        const registeredAt = device.registered_at ? formatDatePremium(device.registered_at + 'Z') : 'Unknown';
+                        const registeredAt = device.registered_at ? formatDatePremium(device.registered_at) : 'Unknown';
                         
                         let locStr = 'Unknown';
-                        let timeStr = device.last_seen ? formatDatePremium(device.last_seen + 'Z') : '<span style="color: var(--text-secondary); font-style: italic;">Awaiting Data...</span>';
+                        let timeStr = device.last_seen ? formatDatePremium(device.last_seen) : '<span style="color: var(--text-secondary); font-style: italic;">Awaiting Data...</span>';
                         let lastSeenContent = `<span id="last-seen-time-${device.device_uid}">${timeStr}</span>`;
                         
                         if(device.last_lat != null && device.last_lon != null) {
                             locStr = `${device.last_lat.toFixed(5)}, ${device.last_lon.toFixed(5)}`;
-                            timeStr = device.last_seen ? formatDatePremium(device.last_seen + 'Z') : 'Unknown';
+                            timeStr = device.last_seen ? formatDatePremium(device.last_seen) : '<span style="color: var(--text-secondary); font-style: italic;">Awaiting Data...</span>';
                             lastSeenContent = `<span id="last-seen-loc-${device.device_uid}"><i class="fa-solid fa-circle-notch fa-spin"></i> Locating...</span> &bull; <span id="last-seen-time-${device.device_uid}">${timeStr}</span>`;
                             
                             // Fire off async geocoding
@@ -1732,9 +1829,9 @@
                         const tableRow = `
                             <tr style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="viewLogs('${device.device_uid}')">
                                 <td><strong>${device.device_uid}</strong></td>
-                                <td><span style="font-size: 13px; color: var(--text-secondary);"><i class="fa-solid ${getIconClass(device.type)}" style="margin-right: 6px; color: var(--accent);"></i>${device.type || 'Car'}</span></td>
-                                <td><span class="status-badge ${device.isOnline ? 'online' : 'offline'}">${device.isOnline ? 'Online' : 'Offline'}</span></td>
-                                <td>${battery}%</td>
+                                <td><span style="font-size: 13px; color: var(--text-secondary);"><i class="fa-solid ${getIconClass(device.type)}" style="margin-right: 6px; color: var(--accent);"></i>${device.type || 'Person'}</span></td>
+                                <td><span class="status-badge ${device.isOnline ? 'online' : 'offline'}" id="table-status-${device.device_uid}">${device.isOnline ? 'Online' : 'Offline'}</span></td>
+                                <td id="battery-table-${device.device_uid}">${battery}%</td>
                                 <td id="loc-table-container-${device.device_uid}">${locStr}</td>
                                 <td id="last-seen-table-${device.device_uid}">${lastSeenContent}</td>
                                 <td>${registeredAt}</td>
@@ -1824,7 +1921,9 @@
             
             const typeSelect = document.getElementById('edit-tracker-type');
             if (typeSelect) {
-                typeSelect.value = currentType || 'Car';
+                let mappedType = currentType || 'Person';
+                if (mappedType === 'Wearable' || mappedType === 'Health Band') mappedType = 'Person';
+                typeSelect.value = mappedType;
             }
             
             editModal.classList.add('active');
@@ -1846,7 +1945,7 @@
                 e.preventDefault();
                 const uid = document.getElementById('edit-tracker-uid').value;
                 const typeSelect = document.getElementById('edit-tracker-type');
-                const newType = typeSelect ? typeSelect.value : 'Car';
+                const newType = typeSelect ? typeSelect.value : 'Person';
                 
                 try {
                     const res = await fetch(`/api/devices/${uid}`, {
@@ -2010,14 +2109,14 @@
                 if(!device) return;
 
                 const content = document.getElementById('details-content');
-                const registeredAt = formatDatePremium(device.registered_at + 'Z');
+                const registeredAt = formatDatePremium(device.registered_at);
                 let locStr = 'Unknown';
-                let timeStr = device.last_seen ? formatDatePremium(device.last_seen + 'Z') : '<span style="color: var(--text-secondary); font-style: italic;">Awaiting Data...</span>';
+                let timeStr = device.last_seen ? formatDatePremium(device.last_seen) : '<span style="color: var(--text-secondary); font-style: italic;">Awaiting Data...</span>';
                 let lastSeenContent = `<span id="details-last-seen-time">${timeStr}</span>`;
                 
                 if(device.last_lat != null && device.last_lon != null) {
                     locStr = `${device.last_lat.toFixed(5)}, ${device.last_lon.toFixed(5)}`;
-                    timeStr = device.last_seen ? formatDatePremium(device.last_seen + 'Z') : 'Unknown';
+                    timeStr = device.last_seen ? formatDatePremium(device.last_seen) : '<span style="color: var(--text-secondary); font-style: italic;">Awaiting Data...</span>';
                     lastSeenContent = `<span id="details-last-seen-loc"><i class="fa-solid fa-circle-notch fa-spin"></i> Locating...</span> &bull; <span id="details-last-seen-time">${timeStr}</span>`;
                 }
 
@@ -2034,7 +2133,7 @@
                             </div>
                             <div>
                                 <h3 style="margin: 0; font-size: 18px;">${device.device_uid}</h3>
-                                <span style="font-size: 12px; color: var(--text-secondary);">${device.type || 'Car'}</span>
+                                <span style="font-size: 12px; color: var(--text-secondary);">${device.type || 'Person'}</span>
                             </div>
                         </div>
                         <div class="detail-row">
@@ -2043,7 +2142,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Status</span>
-                            <span class="detail-val" style="color: ${device.isOnline ? 'var(--success)' : '#ef4444'}">${device.isOnline ? 'Online' : 'Offline'}</span>
+                            <span class="detail-val" id="details-status-val" style="color: ${device.isOnline ? 'var(--success)' : '#ef4444'}">${device.isOnline ? 'Online' : 'Offline'}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Network Transport</span>
@@ -2118,7 +2217,7 @@
                 const uidInput = document.getElementById('add-tracker-uid') || form.querySelector('input');
                 const select = document.getElementById('add-tracker-type') || form.querySelector('select');
                 const uid = (uidInput ? uidInput.value : '').trim();
-                const type = select ? select.value : 'Car';
+                const type = select ? select.value : 'Person';
                 
                 try {
                     const res = await fetch('/api/devices/register', {

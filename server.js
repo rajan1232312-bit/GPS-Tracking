@@ -36,6 +36,31 @@ function parseIntOrNull(val) {
     return num;
 }
 
+function normalizeDeviceType(type) {
+    if (!type) return 'Person';
+    const t = String(type).trim();
+    if (t === 'Wearable' || t === 'Health Band' || t.toLowerCase().includes('wearable') || t.toLowerCase().includes('band')) {
+        return 'Person';
+    }
+    return t;
+}
+
+function parseLastSeenDate(lastSeen) {
+    if (!lastSeen) return null;
+    if (lastSeen instanceof Date) return isNaN(lastSeen.getTime()) ? null : lastSeen;
+    let str = String(lastSeen).trim();
+    while (str.endsWith('ZZ')) str = str.slice(0, -1);
+    if (!str.endsWith('Z') && !str.includes('+') && !str.match(/-\d{2}:\d{2}$/)) {
+        str = str.replace(' ', 'T') + 'Z';
+    }
+    const d = new Date(str);
+    if (isNaN(d.getTime())) {
+        const fallback = new Date(lastSeen);
+        return isNaN(fallback.getTime()) ? null : fallback;
+    }
+    return d;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // normalisePayload — maps hardware field names to canonical internal names
 //   device_id            → device_uid
@@ -168,7 +193,7 @@ function processGpsPayload(payload, row) {
         lat: latitude, lon: longitude, speed: speedVal,
         battery: battery_percentage, watch_battery,
         transport_mode, gps_status,
-        type: row.type || 'Car',
+        type: normalizeDeviceType(row.type),
         timestamp: new Date().toISOString()
     });
 
@@ -195,6 +220,11 @@ function processGpsPayload(payload, row) {
 
         const tm = transport_mode === 0 ? 'LoRa' : transport_mode === 1 ? 'GSM' : transport_mode === 2 ? 'WiFi' : '?';
         console.log(`[DB SAVE] ${targetUid} via ${tm} | GPS:${gps_status === 1 ? 'Locked' : 'NoSignal'} lat=${latitude} lon=${longitude} spd=${speedVal}`);
+    } else {
+        // Always touch last_seen so stationary active devices remain accurately Online
+        db.run(`UPDATE devices SET last_seen = CURRENT_TIMESTAMP WHERE device_uid = ?`, [targetUid], function(err) {
+            if (err) console.error('Error touching last_seen for telemetry:', err);
+        });
     }
 }
 
@@ -284,7 +314,7 @@ app.post('/api/devices/register', (req, res) => {
     const { device_uid, name, type } = req.body;
     const identifier = (device_uid || name || '').trim();
     if (!identifier) return res.status(400).json({ error: 'Device identifier is required' });
-    const deviceType = type || 'Car';
+    const deviceType = normalizeDeviceType(type);
     db.run(`INSERT INTO devices (device_uid, name, type) VALUES (?, ?, ?)`, [identifier, identifier, deviceType], function(err) {
         if (err) {
             if (err.message && err.message.includes('UNIQUE constraint failed'))
@@ -299,14 +329,18 @@ app.post('/api/devices/register', (req, res) => {
 app.get('/api/devices', (req, res) => {
     db.all(`SELECT * FROM devices`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        const now = new Date();
+        const now = Date.now();
         const devices = rows.map(device => {
             let isOnline = false;
             if (device.last_seen) {
-                const lastSeenDate = new Date(device.last_seen + 'Z');
-                if ((now - lastSeenDate) / 1000 / 60 <= 2) isOnline = true;
+                const lastSeenDate = parseLastSeenDate(device.last_seen);
+                // Within 2 minutes is considered Online
+                if (lastSeenDate && (now - lastSeenDate.getTime()) <= 2 * 60 * 1000) {
+                    isOnline = true;
+                }
             }
-            return { ...device, isOnline };
+            const type = normalizeDeviceType(device.type);
+            return { ...device, type, isOnline };
         });
         res.json(devices);
     });
@@ -326,7 +360,7 @@ app.put('/api/devices/:uid', (req, res) => {
     const { name, type, device_uid } = req.body;
     const newUid  = (device_uid || uid).trim();
     const newName = (name || newUid).trim();
-    const deviceType = type || 'Car';
+    const deviceType = normalizeDeviceType(type);
     let query = `UPDATE devices SET name = ?, type = ?`;
     let params = [newName, deviceType];
     if (newUid !== uid) { query += `, device_uid = ?`; params.push(newUid); }

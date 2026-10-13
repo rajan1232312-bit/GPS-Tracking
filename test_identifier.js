@@ -39,29 +39,29 @@ async function runTests() {
         type: 'Wearable'
     });
     console.log('Registration Status:', regRes.status, 'Response:', regRes.data);
-    if (regRes.status !== 200 || regRes.data.device_uid !== testUid) {
-        throw new Error('Registration failed!');
+    if (regRes.status !== 200 || regRes.data.device_uid !== testUid || regRes.data.type !== 'Person') {
+        throw new Error('Registration failed or type was not normalized to Person!');
     }
-    console.log('✓ Successfully registered device without specifying name!');
+    console.log('✓ Successfully registered device without specifying name, type normalized to Person!');
 
     console.log('\n--- 2. Testing Device Edit / Update without name ---');
     const updateRes = await request('PUT', `/api/devices/${testUid}`, {
         type: 'Health Band'
     });
     console.log('Update Status:', updateRes.status, 'Response:', updateRes.data);
-    if (updateRes.status !== 200 || updateRes.data.type !== 'Health Band') {
-        throw new Error('Update failed!');
+    if (updateRes.status !== 200 || updateRes.data.type !== 'Person') {
+        throw new Error('Update failed or Health Band was not normalized to Person!');
     }
-    console.log('✓ Successfully updated device type without requiring name!');
+    console.log('✓ Successfully updated device type without requiring name, type normalized to Person!');
 
     console.log('\n--- 3. Testing Device List ---');
     const listRes = await request('GET', '/api/devices');
     const found = listRes.data.find(d => d.device_uid === testUid);
     console.log('Found updated device:', found);
-    if (!found || found.type !== 'Health Band' || found.name !== testUid) {
-        throw new Error('Device list did not reflect changes!');
+    if (!found || found.type !== 'Person' || found.name !== testUid) {
+        throw new Error('Device list did not reflect changes or normalized Person type!');
     }
-    console.log('✓ Identifier correctly acts as name!');
+    console.log('✓ Identifier correctly acts as name and category is Person!');
 
     console.log('\n--- 4. Testing Telemetry Ingestion (No name in payload) ---');
     const telemetryRes = await request('POST', '/api/tracker/update', {

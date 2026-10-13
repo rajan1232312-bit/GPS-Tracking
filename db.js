@@ -80,6 +80,9 @@ if (process.env.DATABASE_URL) {
                 BEGIN ALTER TABLE vitals_logs ADD COLUMN IF NOT EXISTS watch_status INTEGER; EXCEPTION WHEN OTHERS THEN NULL; END;
                 BEGIN ALTER TABLE vitals_logs ADD COLUMN IF NOT EXISTS watch_battery REAL; EXCEPTION WHEN OTHERS THEN NULL; END;
 
+                -- Consolidate Wearable and Health Band categories into Person
+                UPDATE devices SET type = 'Person' WHERE type IN ('Wearable', 'Health Band', 'healthband', 'wearable', 'Smartwatch') OR type ILIKE '%wearable%' OR type ILIKE '%health band%';
+
                 -- Ensure FK constraints with CASCADE
                 ALTER TABLE telemetry_logs DROP CONSTRAINT IF EXISTS telemetry_logs_device_uid_fkey;
                 ALTER TABLE telemetry_logs ADD CONSTRAINT telemetry_logs_device_uid_fkey
@@ -108,13 +111,13 @@ const memoryStore = {
         { id: 1, device_uid: '8654020409', name: '8654020409', type: 'Car', status: 'Active',
           last_seen: new Date().toISOString(), battery_percentage: null, watch_battery: 85, transport_mode: 2, gps_status: 1, watch_status: 1,
           last_lat: 13.0827, last_lon: 80.2707 },
-        { id: 2, device_uid: 'ID:001', name: 'ID:001', type: 'Health Band', status: 'Active',
+        { id: 2, device_uid: 'ID:001', name: 'ID:001', type: 'Person', status: 'Active',
           last_seen: new Date().toISOString(), battery_percentage: null, watch_battery: 95, transport_mode: 0, gps_status: 1, watch_status: 1,
           last_lat: 13.1166, last_lon: 80.1000 },
-        { id: 3, device_uid: 'HEALTH:8801', name: 'HEALTH:8801', type: 'Wearable', status: 'Active',
+        { id: 3, device_uid: 'HEALTH:8801', name: 'HEALTH:8801', type: 'Person', status: 'Active',
           last_seen: new Date().toISOString(), battery_percentage: null, watch_battery: 90, transport_mode: 1, gps_status: 0, watch_status: 1,
           last_lat: 13.0850, last_lon: 80.2750 },
-        { id: 4, device_uid: 'Node001', name: 'Node001', type: 'Health Band', status: 'Active',
+        { id: 4, device_uid: 'Node001', name: 'Node001', type: 'Person', status: 'Active',
           last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: 0,
           last_lat: 13.0827, last_lon: 80.2707 }
     ],
@@ -190,9 +193,14 @@ const db = {
             const [device_uid, name, type] = params;
             const exists = memoryStore.devices.some(d => d.device_uid === device_uid);
             if (exists) { if (callback) return callback.call(context, new Error('UNIQUE constraint failed')); return; }
+            let normType = type || 'Person';
+            if (normType === 'Wearable' || normType === 'Health Band' || normType.toLowerCase().includes('wearable') || normType.toLowerCase().includes('band')) {
+                normType = 'Person';
+            }
             memoryStore.devices.push({
-                id: context.lastID, device_uid, name, type: type || 'Car',
-                status: 'Active', last_seen: new Date().toISOString(),
+                id: context.lastID, device_uid, name, type: normType,
+                status: 'Active',
+                last_seen: null, // Default offline until first telemetry or vitals data is received
                 battery_percentage: null, watch_battery: null,
                 transport_mode: null, gps_status: null, watch_status: null,
                 registered_at: new Date().toISOString(), last_lat: 13.0827, last_lon: 80.2707
@@ -321,7 +329,7 @@ const db = {
                         ...v,
                         steps: v.step_count,
                         device_name: dev ? dev.name : v.device_uid,
-                        device_type: dev ? dev.type : 'Wearable',
+                        device_type: dev ? (dev.type === 'Wearable' || dev.type === 'Health Band' ? 'Person' : dev.type) : 'Person',
                         device_transport_mode: dev ? dev.transport_mode : null,
                         device_gps_status: dev ? dev.gps_status : null,
                         device_watch_status: dev ? dev.watch_status : null,

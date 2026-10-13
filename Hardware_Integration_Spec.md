@@ -151,6 +151,6 @@ Before sending data, ensure the `device_id` is registered in the system:
   ```bash
   curl -X POST http://192.168.1.213:5001/api/devices/register \
        -H "Content-Type: application/json" \
-       -d '{"device_uid":"DEVICE_001","type":"Wearable"}'
+       -d '{"device_uid":"DEVICE_001","type":"Person"}'
   ```
 Unregistered devices will be rejected with `Validation Failed: Device not found or inactive`.

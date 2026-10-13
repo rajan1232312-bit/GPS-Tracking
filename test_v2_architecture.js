@@ -4,7 +4,7 @@ const net = require('net');
 // 1. First register DEVICE_001 if not already registered
 function registerDevice() {
     return new Promise((resolve, reject) => {
-        const data = JSON.stringify({ device_uid: 'DEVICE_001', type: 'Wearable' });
+        const data = JSON.stringify({ device_uid: 'DEVICE_001', type: 'Person' });
         const req = http.request({
             hostname: '127.0.0.1',
             port: 5001,
