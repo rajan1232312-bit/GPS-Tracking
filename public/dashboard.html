@@ -1573,6 +1573,8 @@
                         detailsLastSeen.innerHTML = `<span id="details-last-seen-loc"><i class="fa-solid fa-circle-notch fa-spin"></i> Locating...</span> &bull; <span id="details-last-seen-time">${lastSeenFormatted}</span>`;
                         getAddressFromCoords(data.lat, data.lon, 'details-last-seen-loc');
                     }
+                }
+
                 if (data.transport_mode !== undefined) {
                     const transportEl = document.getElementById('details-transport');
                     if (transportEl) transportEl.innerHTML = formatTransportDetails(data.transport_mode);
