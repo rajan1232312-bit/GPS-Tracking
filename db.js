@@ -33,7 +33,7 @@ const initQuery = `
         speed REAL NOT NULL,
         battery_percentage INTEGER,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE
+        FOREIGN KEY(device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE ON UPDATE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS vitals_logs (
@@ -46,13 +46,26 @@ const initQuery = `
         spo2 REAL,
         step_count INTEGER DEFAULT 0,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE
+        FOREIGN KEY(device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE ON UPDATE CASCADE
     );
 `;
 
 if (process.env.DATABASE_URL) {
     pool.query(initQuery).then(() => {
         console.log('Connected to PostgreSQL and tables ensured (including vitals_logs).');
+        // Ensure ON UPDATE CASCADE on existing tables if not already present
+        pool.query(`
+            DO $$ 
+            BEGIN 
+                ALTER TABLE telemetry_logs DROP CONSTRAINT IF EXISTS telemetry_logs_device_uid_fkey;
+                ALTER TABLE telemetry_logs ADD CONSTRAINT telemetry_logs_device_uid_fkey FOREIGN KEY (device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE ON UPDATE CASCADE;
+
+                ALTER TABLE vitals_logs DROP CONSTRAINT IF EXISTS vitals_logs_device_uid_fkey;
+                ALTER TABLE vitals_logs ADD CONSTRAINT vitals_logs_device_uid_fkey FOREIGN KEY (device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE ON UPDATE CASCADE;
+            EXCEPTION WHEN OTHERS THEN 
+                NULL;
+            END $$;
+        `).catch(() => {});
     }).catch(err => {
         console.error('Error initializing PostgreSQL tables:', err);
     });
@@ -69,9 +82,9 @@ const convertQuery = (query) => {
 // In-memory store fallback for local development
 const memoryStore = {
     devices: [
-        { id: 1, device_uid: '8654020409', name: 'Delivery Van 1', type: 'Car', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 85, last_lat: 13.0827, last_lon: 80.2707 },
-        { id: 2, device_uid: 'ID:001', name: 'Tracker-001', type: 'Health Band', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 95, last_lat: 13.1166, last_lon: 80.1000 },
-        { id: 3, device_uid: 'HEALTH:8801', name: 'Smart Band Pro', type: 'Wearable', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 90, last_lat: 13.0850, last_lon: 80.2750 },
+        { id: 1, device_uid: '8654020409', name: '8654020409', type: 'Car', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 85, last_lat: 13.0827, last_lon: 80.2707 },
+        { id: 2, device_uid: 'ID:001', name: 'ID:001', type: 'Health Band', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 95, last_lat: 13.1166, last_lon: 80.1000 },
+        { id: 3, device_uid: 'HEALTH:8801', name: 'HEALTH:8801', type: 'Wearable', status: 'Active', last_seen: new Date().toISOString(), battery_percentage: 90, last_lat: 13.0850, last_lon: 80.2750 },
         { id: 4, device_uid: 'Node001', name: 'Node001', type: 'Health Band', status: 'Active', last_seen: null, battery_percentage: 100, last_lat: 13.0827, last_lon: 80.2707 }
     ],
     telemetry_logs: [
@@ -175,12 +188,13 @@ const db = {
                         dev.last_lon = params[2];
                     }
                 }
-            } else if (cleanQuery.includes('SET NAME =')) {
+            } else if (cleanQuery.includes('SET NAME =') || cleanQuery.includes('SET TYPE =')) {
                 const uid = params[params.length - 1];
                 const dev = memoryStore.devices.find(d => d.device_uid === uid);
                 if (dev) {
-                    dev.name = params[0];
+                    dev.name = params[0] || dev.device_uid;
                     if (params.length > 2) dev.type = params[1];
+                    else if (cleanQuery.includes('TYPE = ?')) dev.type = params[1] || params[0];
                 }
             }
         } else if (cleanQuery.startsWith('DELETE FROM DEVICES')) {

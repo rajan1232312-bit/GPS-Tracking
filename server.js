@@ -36,7 +36,7 @@ function parseIntOrNull(val) {
 // Process and store incoming vitals data (handles partial vitals e.g. missing HR)
 function processVitalsPayload(payload, deviceRow) {
     const device_uid = (deviceRow && deviceRow.device_uid) || payload.device_uid || payload.id;
-    const name = (deviceRow && deviceRow.name) || payload.name || device_uid;
+    const name = device_uid;
     
     // Check if any vitals metric is present in the payload
     const hasVitals = (
@@ -148,8 +148,8 @@ const tcpServer = net.createServer((socket) => {
 
                 if (row) {
                     const targetUid = row.device_uid;
-                    const devName = row.name || targetUid;
-                    console.log(`Validation Passed: Device ${devName} (${targetUid}) is valid.`);
+                    const devName = targetUid;
+                    console.log(`Validation Passed: Device ${targetUid} is valid.`);
                     
                     // 1. Process Vitals if present
                     processVitalsPayload(payload, row);
@@ -272,8 +272,8 @@ app.post('/api/tracker/update', (req, res) => {
 
             if (row) {
                 const targetUid = row.device_uid;
-                const devName = row.name || targetUid;
-                console.log(`Validation Passed (HTTP): Device ${devName} (${targetUid})`);
+                const devName = targetUid;
+                console.log(`Validation Passed (HTTP): Device ${targetUid}`);
                 
                 // 1. Process Vitals if included
                 processVitalsPayload(payload, row);
@@ -352,8 +352,8 @@ app.post('/api/vitals/update', (req, res) => {
 
             if (row) {
                 const targetUid = row.device_uid;
-                const devName = row.name || targetUid;
-                console.log(`Validation Passed (Vitals HTTP): Device ${devName} (${targetUid})`);
+                const devName = targetUid;
+                console.log(`Validation Passed (Vitals HTTP): Device ${targetUid}`);
                 const vitalsResult = processVitalsPayload(payload, row);
                 return res.json({ success: true, message: 'Vitals logged successfully', data: vitalsResult });
             } else {
@@ -365,21 +365,22 @@ app.post('/api/vitals/update', (req, res) => {
     }
 });
 
-// Register a new device
+// Register a new device (Identifier acts as name)
 app.post('/api/devices/register', (req, res) => {
     const { device_uid, name, type } = req.body;
-    if (!device_uid || !name) {
-        return res.status(400).json({ error: 'device_uid and name are required' });
+    const identifier = (device_uid || name || '').trim();
+    if (!identifier) {
+        return res.status(400).json({ error: 'Device identifier is required' });
     }
     const deviceType = type || 'Car';
-    db.run(`INSERT INTO devices (device_uid, name, type) VALUES (?, ?, ?)`, [device_uid, name, deviceType], function(err) {
+    db.run(`INSERT INTO devices (device_uid, name, type) VALUES (?, ?, ?)`, [identifier, identifier, deviceType], function(err) {
         if (err) {
-            if (err.message.includes('UNIQUE constraint failed')) {
-                return res.status(400).json({ error: 'Device UID already exists' });
+            if (err.message && err.message.includes('UNIQUE constraint failed')) {
+                return res.status(400).json({ error: 'Device identifier already exists' });
             }
             return res.status(500).json({ error: err.message });
         }
-        res.json({ success: true, id: this.lastID, device_uid, name, type: deviceType });
+        res.json({ success: true, id: this.lastID, device_uid: identifier, name: identifier, type: deviceType });
     });
 });
 
@@ -422,23 +423,24 @@ app.delete('/api/devices/:uid', (req, res) => {
     });
 });
 
-// Update a device name
+// Update a device (Edit option: type and identifier)
 app.put('/api/devices/:uid', (req, res) => {
     const uid = req.params.uid;
-    const { name, type } = req.body;
+    const { name, type, device_uid } = req.body;
     
-    if (!name) {
-        return res.status(400).json({ error: 'Name is required' });
+    // Identifier acts as name
+    const newUid = (device_uid || uid).trim();
+    const newName = (name || newUid).trim();
+    const deviceType = type || 'Car';
+
+    let query = `UPDATE devices SET name = ?, type = ?`;
+    let params = [newName, deviceType];
+
+    if (newUid !== uid) {
+        query += `, device_uid = ?`;
+        params.push(newUid);
     }
 
-    let query = `UPDATE devices SET name = ?`;
-    let params = [name];
-
-    if (type) {
-        query += `, type = ?`;
-        params.push(type);
-    }
-    
     query += ` WHERE device_uid = ?`;
     params.push(uid);
 
@@ -446,7 +448,7 @@ app.put('/api/devices/:uid', (req, res) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        res.json({ success: true, updatedCount: this.changes, name, type });
+        res.json({ success: true, updatedCount: this.changes, device_uid: newUid, name: newName, type: deviceType });
     });
 });
 

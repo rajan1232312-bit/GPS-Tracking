@@ -33,7 +33,6 @@ client.connect(TCP_PORT, HOST, () => {
 
         const payload = {
             device_uid: "ID:001",
-            name: "Tracker-001",
             lat: currentLat,
             lon: currentLon,
             speed: 40 + Math.random() * 10,

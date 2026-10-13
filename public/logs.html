@@ -494,8 +494,7 @@
                 logsThead.innerHTML = `
                     <tr>
                         <th style="width: 70px;">Status</th>
-                        <th>Device Name</th>
-                        <th>Device UID</th>
+                        <th>Device Identifier</th>
                         <th>Blood Pressure (BP)</th>
                         <th>SpO2 (%)</th>
                         <th>Heart Rate (BPM)</th>
@@ -508,8 +507,7 @@
                 logsThead.innerHTML = `
                     <tr>
                         <th style="width: 70px;">Status</th>
-                        <th>Device Name</th>
-                        <th>Device UID</th>
+                        <th>Device Identifier</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
                         <th>Timestamp</th>
@@ -542,8 +540,7 @@
                 return `
                     <tr class="${isNew ? 'new-row' : ''}">
                         <td><span class="pulse-dot" style="background-color: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span></td>
-                        <td style="font-weight: 600; color: #f8fafc;">${escapeHtml(log.device_name || 'Unknown Device')}</td>
-                        <td><span class="uid-badge">${escapeHtml(log.device_uid)}</span></td>
+                        <td><span class="uid-badge">${escapeHtml(log.device_uid || log.device_name)}</span></td>
                         <td>${bpDisplay}</td>
                         <td>${spo2Display}</td>
                         <td>${hrDisplay}</td>
@@ -555,8 +552,7 @@
                 return `
                     <tr class="${isNew ? 'new-row' : ''}">
                         <td><span class="pulse-dot"></span></td>
-                        <td style="font-weight: 600; color: #f8fafc;">${escapeHtml(log.device_name || 'Unknown Device')}</td>
-                        <td><span class="uid-badge">${escapeHtml(log.device_uid)}</span></td>
+                        <td><span class="uid-badge">${escapeHtml(log.device_uid || log.device_name)}</span></td>
                         <td class="coord">${log.latitude != null ? parseFloat(log.latitude).toFixed(5) : '<span class="empty-val">—</span>'}</td>
                         <td class="coord">${log.longitude != null ? parseFloat(log.longitude).toFixed(5) : '<span class="empty-val">—</span>'}</td>
                         <td style="white-space: nowrap;">${formatDateTime(log.timestamp)}</td>
@@ -572,7 +568,7 @@
                 devices.forEach(d => {
                     const option = document.createElement('option');
                     option.value = d.device_uid;
-                    option.textContent = d.name ? `${d.name} (${d.device_uid})` : d.device_uid;
+                    option.textContent = d.device_uid;
                     deviceFilter.appendChild(option);
                 });
             } catch (err) {
@@ -581,7 +577,7 @@
         }
 
         function renderLogs(logsToRender) {
-            const colCount = currentLogType === 'vitals' ? 8 : 6;
+            const colCount = currentLogType === 'vitals' ? 7 : 5;
             if (logsToRender && logsToRender.length > 0) {
                 logsBody.innerHTML = logsToRender.map(log => createRowHtml(log)).join('');
             } else {
@@ -703,7 +699,7 @@
 
             const newLog = {
                 device_uid: data.id,
-                device_name: data.name || ('Device ' + data.id),
+                device_name: data.id,
                 latitude: data.lat,
                 longitude: data.lon,
                 timestamp: data.timestamp
@@ -736,7 +732,7 @@
 
             const newLog = {
                 device_uid: data.device_uid || data.id,
-                device_name: data.name || ('Device ' + (data.device_uid || data.id)),
+                device_name: data.device_uid || data.id,
                 heart_rate: data.heart_rate,
                 blood_pressure: data.blood_pressure,
                 blood_pressure_sys: data.bp_sys,

@@ -10,7 +10,7 @@
 The tracker/node must send data as a **compact JSON string** over TCP or HTTP.
 
 **3. Required JSON Structure**
-To keep packet payloads minimal for microcontrollers (ESP32, GSM/GPRS modules, smart bands), only the device identifier (`device_uid`) is required. The `name` field has been **completely removed from the payload** and is resolved automatically from the registered database entry.
+To keep packet payloads minimal for microcontrollers (ESP32, GSM/GPRS modules, smart bands), only the device identifier (`device_uid`) is required. The `name` field has been **completely removed from the payload and system**, and the `device_uid` (identifier) acts directly as the device's name.
 
 *The identifier does not need to be digits; it can be any string identifier, such as `"Node001"` or an IMEI.*
 
@@ -69,7 +69,7 @@ To keep packet payloads minimal for microcontrollers (ESP32, GSM/GPRS modules, s
 *(Notice: Any metric omitted from the payload is stored as null and presented cleanly as an empty dash `—` in logs and the dashboard.)*
 
 **5. Validation & Device Matching**
-The server validates incoming packets against active devices in the database matching `device_uid` (or alias name). If an active registered device is found, the data is accepted and the server resolves the registered device name for WebSockets and UI logs.
+The server validates incoming packets against active devices in the database matching `device_uid`. If an active registered device is found, the data is accepted and the identifier directly represents the device in WebSockets and UI logs.
 
 **6. Server Acknowledgment**
 Upon successful validation, the server replies over TCP or HTTP:

@@ -817,20 +817,18 @@
             </div>
             <form class="modal-form" id="add-tracker-form">
                 <div class="form-group">
-                    <label>Tracker Name</label>
-                    <input type="text" placeholder="e.g. Delivery Van 1" required>
-                </div>
-                <div class="form-group">
                     <label>Identifier</label>
-                    <input type="text" placeholder="e.g. 8654020409..." required>
+                    <input type="text" id="add-tracker-uid" placeholder="e.g. Node001 or 8654020409..." required>
                 </div>
                 <div class="form-group">
-                    <label>Vehicle Type</label>
-                    <select>
-                        <option>Car</option>
-                        <option>Truck</option>
-                        <option>Bike</option>
-                        <option>Person</option>
+                    <label>Vehicle / Device Type</label>
+                    <select id="add-tracker-type">
+                        <option value="Car">Car</option>
+                        <option value="Truck">Truck</option>
+                        <option value="Bike">Bike</option>
+                        <option value="Person">Person</option>
+                        <option value="Wearable">Wearable</option>
+                        <option value="Health Band">Health Band</option>
                     </select>
                 </div>
                 <button type="submit" class="submit-btn">Register Device</button>
@@ -848,21 +846,19 @@
             <form class="modal-form" id="edit-tracker-form">
                 <input type="hidden" id="edit-tracker-uid">
                 <div class="form-group">
-                    <label>Tracker Name</label>
-                    <input type="text" id="edit-tracker-name" placeholder="e.g. Delivery Van 1" required>
+                    <label>Identifier</label>
+                    <input type="text" id="edit-tracker-uid-display" placeholder="e.g. Node001..." readonly style="opacity: 0.85; background: rgba(255,255,255,0.05); cursor: default;" title="Device Identifier">
                 </div>
                 <div class="form-group">
-                    <label>Vehicle Type</label>
+                    <label>Vehicle / Device Type</label>
                     <select id="edit-tracker-type" required style="width:100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;">
                         <option value="Car">Car</option>
                         <option value="Truck">Truck</option>
                         <option value="Bike">Bike</option>
                         <option value="Person">Person</option>
+                        <option value="Wearable">Wearable</option>
+                        <option value="Health Band">Health Band</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label>Identifier</label>
-                    <input type="text" id="edit-tracker-uid-display" placeholder="e.g. 8654020409..." disabled style="opacity: 0.6; cursor: not-allowed;" title="Hardware identifier cannot be changed">
                 </div>
                 <button type="submit" class="submit-btn">Save Changes</button>
             </form>
@@ -993,8 +989,8 @@
             <table class="devices-table">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Identifier (UID)</th>
+                        <th>Identifier</th>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Battery</th>
                         <th>Last Location</th>
@@ -1141,6 +1137,8 @@
                 case 'Truck': return 'fa-truck';
                 case 'Bike': return 'fa-motorcycle';
                 case 'Person': return 'fa-person';
+                case 'Wearable':
+                case 'Health Band': return 'fa-heart-pulse';
                 default: return 'fa-car';
             }
         }
@@ -1629,15 +1627,15 @@
                                 <i class="fa-solid ${getIconClass(device.type)}"></i>
                             </div>
                             <div class="device-info">
-                                <div class="device-name">${device.name || device.device_uid}</div>
+                                <div class="device-name">${device.device_uid}</div>
                                 <div class="device-status ${!device.isOnline ? 'error' : ''}" id="sidebar-dev-time-${device.device_uid}">
                                     ${device.isOnline ? 'Online' : 'Offline'}
                                 </div>
                             </div>
-                            <div class="edit-btn" onclick="editDevice(event, '${device.device_uid}', '${device.name || ''}', '${device.type || 'Car'}')" title="Edit Name">
+                            <div class="edit-btn" onclick="editDevice(event, '${device.device_uid}', '${device.type || 'Car'}')" title="Edit Tracker">
                                 <i class="fa-solid fa-pen"></i>
                             </div>
-                            <div class="delete-btn" onclick="deleteDevice(event, '${device.device_uid}', '${device.name || ''}')" title="Delete Device">
+                            <div class="delete-btn" onclick="deleteDevice(event, '${device.device_uid}')" title="Delete Tracker">
                                 <i class="fa-solid fa-trash"></i>
                             </div>
                         </div>
@@ -1663,9 +1661,9 @@
                         }
                         
                         const tableRow = `
-                            <tr style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="viewLogs('${device.device_uid}', '${device.name || device.device_uid}')">
-                                <td><strong>${device.name || 'N/A'}</strong></td>
-                                <td>${device.device_uid}</td>
+                            <tr style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="viewLogs('${device.device_uid}')">
+                                <td><strong>${device.device_uid}</strong></td>
+                                <td><span style="font-size: 13px; color: var(--text-secondary);"><i class="fa-solid ${getIconClass(device.type)}" style="margin-right: 6px; color: var(--accent);"></i>${device.type || 'Car'}</span></td>
                                 <td><span class="status-badge ${device.isOnline ? 'online' : 'offline'}">${device.isOnline ? 'Online' : 'Offline'}</span></td>
                                 <td>${battery}%</td>
                                 <td id="loc-table-container-${device.device_uid}">${locStr}</td>
@@ -1693,7 +1691,7 @@
 
                         if (!window.deviceMarkers[device.device_uid]) {
                             window.deviceMarkers[device.device_uid] = L.marker([renderLat, renderLon], { icon: getMapIcon(device.isOnline) })
-                                .bindTooltip(device.name || device.device_uid, { permanent: false, direction: 'top', className: 'professional-tooltip' })
+                                .bindTooltip(device.device_uid, { permanent: false, direction: 'top', className: 'professional-tooltip' })
                                 .addTo(map);
                         } else {
                             window.deviceMarkers[device.device_uid].setLatLng([renderLat, renderLon]);
@@ -1710,10 +1708,10 @@
         
         let deviceToDelete = null;
         
-        function deleteDevice(event, uid, name) {
+        function deleteDevice(event, uid) {
             event.stopPropagation();
             deviceToDelete = uid;
-            document.getElementById('delete-device-name-display').textContent = name || uid;
+            document.getElementById('delete-device-name-display').textContent = uid;
             document.getElementById('delete-confirm-modal').classList.add('active');
         }
 
@@ -1749,12 +1747,11 @@
             }
         });
 
-        async function editDevice(event, uid, currentName, currentType) {
+        async function editDevice(event, uid, currentType) {
             event.stopPropagation(); // Prevent triggering the card click
             const editModal = document.getElementById('edit-tracker-modal');
             document.getElementById('edit-tracker-uid').value = uid;
             document.getElementById('edit-tracker-uid-display').value = uid;
-            document.getElementById('edit-tracker-name').value = currentName;
             
             const typeSelect = document.getElementById('edit-tracker-type');
             if (typeSelect) {
@@ -1779,7 +1776,6 @@
             editForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const uid = document.getElementById('edit-tracker-uid').value;
-                const newName = document.getElementById('edit-tracker-name').value;
                 const typeSelect = document.getElementById('edit-tracker-type');
                 const newType = typeSelect ? typeSelect.value : 'Car';
                 
@@ -1787,22 +1783,22 @@
                     const res = await fetch(`/api/devices/${uid}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: newName.trim(), type: newType })
+                        body: JSON.stringify({ type: newType, name: uid })
                     });
                     if (res.ok) {
                         editModal.classList.remove('active');
-                        fetchDevices(); // Refresh the list to show new name
+                        fetchDevices(); // Refresh the list
                         // Also update details panel if it's currently open for this device
                         if (detailsPanel.classList.contains('active')) {
                             openDeviceDetails(uid);
                         }
                     } else {
                         const data = await res.json();
-                        alert('Error updating name: ' + data.error);
+                        alert('Error updating tracker: ' + data.error);
                     }
                 } catch(err) {
                     console.error('Failed to update device', err);
-                    alert('Failed to update device name.');
+                    alert('Failed to update device.');
                 }
             });
         }
@@ -1819,9 +1815,9 @@
             });
         }
 
-        async function viewLogs(uid, name) {
+        async function viewLogs(uid) {
             const tbody = document.getElementById('logs-table-body');
-            document.getElementById('logs-device-name').textContent = name;
+            document.getElementById('logs-device-name').textContent = uid;
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading logs...</td></tr>';
             logsModal.classList.add('active');
 
@@ -1968,12 +1964,12 @@
                                 <i class="fa-solid ${getIconClass(device.type)}" style="color: var(--accent); font-size: 24px;"></i>
                             </div>
                             <div>
-                                <h3 style="margin: 0; font-size: 18px;">${device.name || 'N/A'}</h3>
+                                <h3 style="margin: 0; font-size: 18px;">${device.device_uid}</h3>
                                 <span style="font-size: 12px; color: var(--text-secondary);">${device.type || 'Car'}</span>
                             </div>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Identifier (UID)</span>
+                            <span class="detail-label">Identifier</span>
                             <span class="detail-val" id="details-uid-display">${device.device_uid}</span>
                         </div>
                         <div class="detail-row">
@@ -2034,17 +2030,16 @@
         if(form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const inputs = form.querySelectorAll('input');
-                const select = form.querySelector('select');
-                const name = inputs[0].value;
-                const uid = inputs[1].value;
+                const uidInput = document.getElementById('add-tracker-uid') || form.querySelector('input');
+                const select = document.getElementById('add-tracker-type') || form.querySelector('select');
+                const uid = (uidInput ? uidInput.value : '').trim();
                 const type = select ? select.value : 'Car';
                 
                 try {
                     const res = await fetch('/api/devices/register', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ device_uid: uid, name: name, type: type })
+                        body: JSON.stringify({ device_uid: uid, name: uid, type: type })
                     });
                     if(res.ok) {
                         modal.classList.remove('active');
@@ -2129,7 +2124,7 @@
                         devices.forEach(d => {
                             const opt = document.createElement('option');
                             opt.value = d.device_uid;
-                            opt.textContent = d.name || d.device_uid;
+                            opt.textContent = d.device_uid;
                             historyDeviceSelect.appendChild(opt);
                         });
                     });
