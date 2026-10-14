@@ -994,68 +994,48 @@
                     statusText.textContent = 'Online / Active';
                     statusText.style.color = '#34d399';
                 }
-                document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
-
-                // Hardware telemetry metadata - strictly validated, no defaults
-                const transportElem = document.getElementById('meta-transport');
-                if (transportElem) {
-                    const rawTm = vitals.transport_mode !== undefined ? vitals.transport_mode : vitals.device_transport_mode;
-                    const tm = (rawTm === 0 || rawTm === 1 || rawTm === 2 || rawTm === '0' || rawTm === '1' || rawTm === '2') ? parseInt(rawTm, 10) : null;
-                    transportElem.innerHTML = formatTransportBadge(tm);
-                }
-
-                const gpsElem = document.getElementById('meta-gps');
-                if (gpsElem) {
-                    const gps = vitals.gps_status !== undefined ? vitals.gps_status : vitals.device_gps_status;
-                    gpsElem.innerHTML = formatGpsBadge(gps);
-                }
-
-                const watchElem = document.getElementById('meta-watch');
-                if (watchElem) {
-                    const ws = vitals.watch_status !== undefined ? vitals.watch_status : vitals.device_watch_status;
-                    watchElem.innerHTML = formatWatchBadge(ws);
-                }
-
-                const watchBattElem = document.getElementById('meta-watch-battery');
-                if (watchBattElem) {
-                    const wb = vitals.watch_battery !== undefined ? vitals.watch_battery : vitals.device_watch_battery;
-                    watchBattElem.innerHTML = formatWatchBattery(wb);
-                }
-
-                if (vitals.battery_percentage != null && vitals.battery_percentage !== -1) {
-                    const battElem = document.getElementById('meta-battery');
-                    if (battElem) battElem.textContent = `${vitals.battery_percentage}%`;
-                }
             } else if (vitals && vitals.timestamp) {
-                // Device has past vitals data, but is currently Offline - do NOT show active network badge
                 if (statusDot) statusDot.className = 'pulse-live-dot';
                 if (statusText) {
-                    statusText.textContent = 'Offline / Standby';
+                    statusText.textContent = 'Stream Paused / Last Data';
                     statusText.style.color = '#94a3b8';
-                }
-                document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
-
-                const transportElem = document.getElementById('meta-transport');
-                if (transportElem) transportElem.innerHTML = '<span class="empty-dash">—</span>';
-
-                const gpsElem = document.getElementById('meta-gps');
-                if (gpsElem) gpsElem.innerHTML = '<span class="empty-dash">—</span>';
-
-                const watchElem = document.getElementById('meta-watch');
-                if (watchElem) watchElem.innerHTML = '<span class="empty-dash">—</span>';
-
-                const watchBattElem = document.getElementById('meta-watch-battery');
-                if (watchBattElem) {
-                    const wb = vitals.watch_battery !== undefined ? vitals.watch_battery : vitals.device_watch_battery;
-                    watchBattElem.innerHTML = formatWatchBattery(wb);
-                }
-
-                if (vitals.battery_percentage != null && vitals.battery_percentage !== -1) {
-                    const battElem = document.getElementById('meta-battery');
-                    if (battElem) battElem.textContent = `${vitals.battery_percentage}%`;
                 }
             } else {
                 clearCardMetrics();
+                return;
+            }
+
+            document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
+
+            // Hardware telemetry metadata (favicons) - ALWAYS display the last received hardware data without defaults
+            const transportElem = document.getElementById('meta-transport');
+            if (transportElem) {
+                const rawTm = vitals.transport_mode !== undefined ? vitals.transport_mode : vitals.device_transport_mode;
+                const tm = (rawTm === 0 || rawTm === 1 || rawTm === 2 || rawTm === '0' || rawTm === '1' || rawTm === '2') ? parseInt(rawTm, 10) : null;
+                transportElem.innerHTML = formatTransportBadge(tm);
+            }
+
+            const gpsElem = document.getElementById('meta-gps');
+            if (gpsElem) {
+                const gps = vitals.gps_status !== undefined ? vitals.gps_status : vitals.device_gps_status;
+                gpsElem.innerHTML = formatGpsBadge(gps);
+            }
+
+            const watchElem = document.getElementById('meta-watch');
+            if (watchElem) {
+                const ws = vitals.watch_status !== undefined ? vitals.watch_status : vitals.device_watch_status;
+                watchElem.innerHTML = formatWatchBadge(ws);
+            }
+
+            const watchBattElem = document.getElementById('meta-watch-battery');
+            if (watchBattElem) {
+                const wb = vitals.watch_battery !== undefined ? vitals.watch_battery : vitals.device_watch_battery;
+                watchBattElem.innerHTML = formatWatchBattery(wb);
+            }
+
+            if (vitals.battery_percentage != null && vitals.battery_percentage !== -1) {
+                const battElem = document.getElementById('meta-battery');
+                if (battElem) battElem.textContent = `${vitals.battery_percentage}%`;
             }
 
             // 1. Blood Pressure (BP)
@@ -1070,8 +1050,13 @@
             if (vitals.blood_pressure && vitals.blood_pressure !== '—/—' && vitals.blood_pressure !== '-1/-1') {
                 bpValElem.textContent = vitals.blood_pressure;
                 bpNotice.style.display = 'none';
-                bpStatusBadge.className = 'status-pill status-optimal';
-                bpStatusBadge.innerHTML = '<span class="dot"></span> Normal';
+                if (isOnline) {
+                    bpStatusBadge.className = 'status-pill status-optimal';
+                    bpStatusBadge.innerHTML = '<span class="dot"></span> Normal';
+                } else {
+                    bpStatusBadge.className = 'status-pill status-nodata';
+                    bpStatusBadge.innerHTML = '<span class="dot"></span> Last Recorded';
+                }
 
                 const sys = vitals.blood_pressure_sys || (vitals.blood_pressure.split('/')[0]);
                 const dia = vitals.blood_pressure_dia || (vitals.blood_pressure.split('/')[1]);
@@ -1103,20 +1088,26 @@
                 hrValElem.textContent = vitals.heart_rate;
                 hrNotice.style.display = 'none';
                 const hr = parseInt(vitals.heart_rate, 10);
-                if (hr < 60) {
-                    hrStatusBadge.className = 'status-pill status-warning';
-                    hrStatusBadge.innerHTML = '<span class="dot"></span> Low (Bradycardia)';
-                } else if (hr > 100) {
-                    hrStatusBadge.className = 'status-pill status-warning';
-                    hrStatusBadge.innerHTML = '<span class="dot"></span> High (Tachycardia)';
+                if (isOnline) {
+                    if (hr < 60) {
+                        hrStatusBadge.className = 'status-pill status-warning';
+                        hrStatusBadge.innerHTML = '<span class="dot"></span> Low (Bradycardia)';
+                    } else if (hr > 100) {
+                        hrStatusBadge.className = 'status-pill status-warning';
+                        hrStatusBadge.innerHTML = '<span class="dot"></span> High (Tachycardia)';
+                    } else {
+                        hrStatusBadge.className = 'status-pill status-optimal';
+                        hrStatusBadge.innerHTML = '<span class="dot"></span> Normal';
+                    }
+                    hrTimeElem.textContent = 'Measured live';
                 } else {
-                    hrStatusBadge.className = 'status-pill status-optimal';
-                    hrStatusBadge.innerHTML = '<span class="dot"></span> Normal';
+                    hrStatusBadge.className = 'status-pill status-nodata';
+                    hrStatusBadge.innerHTML = '<span class="dot"></span> Last Recorded';
+                    hrTimeElem.textContent = 'Last recorded at ' + formatDateTime(vitals.timestamp);
                 }
                 hrTrack.style.display = 'block';
                 const pct = Math.min(100, Math.max(10, (hr / 160) * 100));
                 hrProgress.style.width = `${pct}%`;
-                hrTimeElem.textContent = 'Measured live';
             } else {
                 hrValElem.textContent = '—';
                 hrNotice.style.display = 'flex';
@@ -1138,14 +1129,20 @@
                 const spo2 = parseFloat(vitals.spo2);
                 spo2ValElem.textContent = spo2.toFixed(1);
                 spo2Notice.style.display = 'none';
-                if (spo2 < 95) {
-                    spo2StatusBadge.className = 'status-pill status-warning';
-                    spo2StatusBadge.innerHTML = '<span class="dot"></span> Below Normal';
-                    spo2Grade.textContent = 'Attention';
+                if (isOnline) {
+                    if (spo2 < 95) {
+                        spo2StatusBadge.className = 'status-pill status-warning';
+                        spo2StatusBadge.innerHTML = '<span class="dot"></span> Below Normal';
+                        spo2Grade.textContent = 'Attention';
+                    } else {
+                        spo2StatusBadge.className = 'status-pill status-optimal';
+                        spo2StatusBadge.innerHTML = '<span class="dot"></span> Optimal';
+                        spo2Grade.textContent = 'Optimal Range';
+                    }
                 } else {
-                    spo2StatusBadge.className = 'status-pill status-optimal';
-                    spo2StatusBadge.innerHTML = '<span class="dot"></span> Optimal';
-                    spo2Grade.textContent = 'Optimal Range';
+                    spo2StatusBadge.className = 'status-pill status-nodata';
+                    spo2StatusBadge.innerHTML = '<span class="dot"></span> Last Recorded';
+                    spo2Grade.textContent = 'Last recorded: ' + spo2.toFixed(1) + '%';
                 }
                 spo2Track.style.display = 'block';
                 spo2Progress.style.width = `${Math.min(100, spo2)}%`;
@@ -1171,8 +1168,13 @@
                 const stepsNum = parseInt(rawSteps, 10);
                 stepsValElem.textContent = stepsNum.toLocaleString();
                 stepsNotice.style.display = 'none';
-                stepsStatusBadge.className = 'status-pill status-optimal';
-                stepsStatusBadge.innerHTML = '<span class="dot"></span> Active';
+                if (isOnline) {
+                    stepsStatusBadge.className = 'status-pill status-optimal';
+                    stepsStatusBadge.innerHTML = '<span class="dot"></span> Active';
+                } else {
+                    stepsStatusBadge.className = 'status-pill status-nodata';
+                    stepsStatusBadge.innerHTML = '<span class="dot"></span> Last Recorded';
+                }
                 
                 stepsTrack.style.display = 'block';
                 const pct = Math.min(100, (stepsNum / 10000) * 100);
@@ -1328,6 +1330,42 @@
 
                 if (vitalsStreamBody.children.length > 25) {
                     vitalsStreamBody.removeChild(vitalsStreamBody.lastChild);
+                }
+            }
+        });
+
+        // Also listen to real-time tracker packets (device_moved) to update watch data and favicons live
+        socket.on('device_moved', (data) => {
+            const targetUid = deviceSelect.value;
+            const devUid = data.id || data.device_uid;
+
+            if (targetUid === 'all' || targetUid === devUid) {
+                const statusDot = document.getElementById('meta-status-dot');
+                if (statusDot) statusDot.className = 'pulse-live-dot online';
+                const statusText = document.getElementById('meta-status');
+                if (statusText) {
+                    statusText.textContent = 'Online / Active';
+                    statusText.style.color = '#34d399';
+                }
+                if (data.timestamp) {
+                    const lastSeenElem = document.getElementById('meta-last-seen');
+                    if (lastSeenElem) lastSeenElem.textContent = formatDateTime(data.timestamp);
+                }
+                if (data.watch_battery !== undefined && data.watch_battery !== null && data.watch_battery !== -1) {
+                    const wbElem = document.getElementById('meta-watch-battery');
+                    if (wbElem) wbElem.innerHTML = formatWatchBattery(data.watch_battery);
+                }
+                if (data.watch_status !== undefined && data.watch_status !== null && data.watch_status !== -1) {
+                    const watchElem = document.getElementById('meta-watch');
+                    if (watchElem) watchElem.innerHTML = formatWatchBadge(data.watch_status);
+                }
+                if (data.transport_mode !== undefined && data.transport_mode !== null) {
+                    const transportElem = document.getElementById('meta-transport');
+                    if (transportElem) transportElem.innerHTML = formatTransportBadge(data.transport_mode);
+                }
+                if (data.gps_status !== undefined && data.gps_status !== null) {
+                    const gpsElem = document.getElementById('meta-gps');
+                    if (gpsElem) gpsElem.innerHTML = formatGpsBadge(data.gps_status);
                 }
             }
         });

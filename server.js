@@ -109,10 +109,11 @@ function processVitalsPayload(rawPayload, deviceRow) {
     const name = device_uid;
 
     const hasVitals = (
-        payload.heart_rate  !== undefined || payload.blood_pressure !== undefined ||
-        payload.bp          !== undefined || payload.bp_sys         !== undefined ||
-        payload.bp_dia      !== undefined || payload.spo2           !== undefined ||
-        payload.steps       !== undefined || payload.step_count     !== undefined
+        payload.heart_rate   !== undefined || payload.blood_pressure !== undefined ||
+        payload.bp           !== undefined || payload.bp_sys         !== undefined ||
+        payload.bp_dia       !== undefined || payload.spo2           !== undefined ||
+        payload.steps        !== undefined || payload.step_count     !== undefined ||
+        payload.watch_status !== undefined || payload.watch_battery  !== undefined
     );
     if (!hasVitals) return null;
 
@@ -152,7 +153,7 @@ function processVitalsPayload(rawPayload, deviceRow) {
 
     db.run(`
         UPDATE devices SET last_seen = CURRENT_TIMESTAMP,
-            watch_battery  = ?,
+            watch_battery  = COALESCE(?, watch_battery),
             transport_mode = COALESCE(?, transport_mode),
             gps_status     = COALESCE(?, gps_status),
             watch_status   = COALESCE(?, watch_status)
@@ -185,6 +186,7 @@ function processGpsPayload(payload, row) {
     const longitude = parseFloat(rawLon);
     const speedVal  = parseFloat(payload.speed || 0);
 
+    const watch_status      = parseIntOrNull(payload.watch_status);
     const watch_battery     = parseNumberOrNull(payload.watch_battery !== undefined ? payload.watch_battery : payload.watch_battery_percent);
     const battery_percentage = watch_battery !== null ? Math.round(watch_battery) : (row.battery_percentage || null);
 
@@ -206,7 +208,7 @@ function processGpsPayload(payload, row) {
     io.emit('device_moved', {
         id: targetUid, name: targetUid,
         lat: latitude, lon: longitude, speed: speedVal,
-        battery: battery_percentage, watch_battery,
+        battery: battery_percentage, watch_battery, watch_status,
         transport_mode, gps_status,
         type: normalizeDeviceType(row.type),
         timestamp: new Date().toISOString()
@@ -225,24 +227,29 @@ function processGpsPayload(payload, row) {
 
         db.run(`
             UPDATE devices SET last_seen = CURRENT_TIMESTAMP,
-                battery_percentage = ?, last_lat = ?, last_lon = ?,
+                battery_percentage = COALESCE(?, battery_percentage),
+                last_lat = ?, last_lon = ?,
+                watch_battery  = COALESCE(?, watch_battery),
+                watch_status   = COALESCE(?, watch_status),
                 transport_mode = COALESCE(?, transport_mode),
                 gps_status     = COALESCE(?, gps_status)
             WHERE device_uid = ?
-        `, [battery_percentage, latitude, longitude, transport_mode, gps_status, targetUid], function(err) {
+        `, [battery_percentage, latitude, longitude, watch_battery, watch_status, transport_mode, gps_status, targetUid], function(err) {
             if (err) console.error('Error updating device for telemetry:', err);
         });
 
         const tm = transport_mode === 0 ? 'LoRa (Purple)' : transport_mode === 1 ? 'GSM (Blue)' : transport_mode === 2 ? 'WiFi (Green)' : 'None';
         console.log(`[DB SAVE] ${targetUid} via ${tm} | GPS:${gps_status === 1 ? 'Locked' : 'NoSignal'} lat=${latitude} lon=${longitude} spd=${speedVal}`);
     } else {
-        // Always touch last_seen and update transport_mode/gps_status if present so stationary active devices remain accurately Online and connected
+        // Always touch last_seen and update watch/transport/gps if present so stationary active devices remain accurately Online and connected
         db.run(`
             UPDATE devices SET last_seen = CURRENT_TIMESTAMP,
+                watch_battery  = COALESCE(?, watch_battery),
+                watch_status   = COALESCE(?, watch_status),
                 transport_mode = COALESCE(?, transport_mode),
                 gps_status     = COALESCE(?, gps_status)
             WHERE device_uid = ?
-        `, [transport_mode, gps_status, targetUid], function(err) {
+        `, [watch_battery, watch_status, transport_mode, gps_status, targetUid], function(err) {
             if (err) console.error('Error touching last_seen for telemetry:', err);
         });
     }

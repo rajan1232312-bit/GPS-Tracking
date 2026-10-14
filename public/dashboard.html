@@ -1587,6 +1587,14 @@
                 if(sidebarNet) {
                     sidebarNet.innerHTML = formatTransportBadgeSm(data.transport_mode);
                 }
+                const sidebarGps = document.getElementById(`sidebar-dev-gps-${data.id}`);
+                if(sidebarGps && data.gps_status !== undefined && data.gps_status !== null) {
+                    sidebarGps.innerHTML = formatGpsMini(data.gps_status);
+                }
+                const sidebarWatch = document.getElementById(`sidebar-dev-watch-${data.id}`);
+                if(sidebarWatch && data.watch_status !== undefined && data.watch_status !== null) {
+                    sidebarWatch.innerHTML = formatWatchMini(data.watch_status);
+                }
             }
             
             // 4. Update Table Last Seen (Address • Time)
@@ -1640,6 +1648,10 @@
                     const gpsEl = document.getElementById('details-gps');
                     if (gpsEl) gpsEl.innerHTML = formatGpsDetails(data.gps_status);
                 }
+                if (data.watch_status !== undefined && data.watch_status !== null) {
+                    const watchEl = document.getElementById('details-watch');
+                    if (watchEl) watchEl.innerHTML = formatWatchDetails(data.watch_status);
+                }
                 if (data.watch_battery !== undefined && data.watch_battery !== null && data.watch_battery !== -1) {
                     const wbEl = document.getElementById('details-watch-batt');
                     if (wbEl) wbEl.textContent = `${Number(data.watch_battery).toFixed(1)}%`;
@@ -1666,6 +1678,14 @@
                 let sidebarNet = document.getElementById('sidebar-dev-transport-' + devId);
                 if (sidebarNet) {
                     sidebarNet.innerHTML = formatTransportBadgeSm(data.transport_mode);
+                }
+                const sidebarGps = document.getElementById('sidebar-dev-gps-' + devId);
+                if (sidebarGps && data.gps_status !== undefined && data.gps_status !== null) {
+                    sidebarGps.innerHTML = formatGpsMini(data.gps_status);
+                }
+                const sidebarWatch = document.getElementById('sidebar-dev-watch-' + devId);
+                if (sidebarWatch && data.watch_status !== undefined && data.watch_status !== null) {
+                    sidebarWatch.innerHTML = formatWatchMini(data.watch_status);
                 }
             }
 

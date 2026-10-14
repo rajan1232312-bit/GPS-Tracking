@@ -203,20 +203,27 @@ const db = {
             if (dev) {
                 if (cleanQuery.includes('LAST_SEEN = CURRENT_TIMESTAMP')) {
                     dev.last_seen = new Date().toISOString();
-                    // Handle both telemetry update (battery,lat,lon,transport,gps) and vitals update (watch_battery,transport,gps,watch)
-                    if (cleanQuery.includes('WATCH_BATTERY')) {
-                        // Vitals UPDATE: watch_battery, transport_mode, gps_status, watch_status
+                    if (cleanQuery.includes('LAST_LAT =') || cleanQuery.includes('BATTERY_PERCENTAGE =')) {
+                        // Telemetry UPDATE: [battery_percentage, lat, lon, watch_battery, watch_status, transport_mode, gps_status, targetUid]
+                        dev.battery_percentage = params[0] ?? dev.battery_percentage;
+                        dev.last_lat           = params[1] ?? dev.last_lat;
+                        dev.last_lon           = params[2] ?? dev.last_lon;
+                        dev.watch_battery      = params[3] ?? dev.watch_battery;
+                        dev.watch_status       = params[4] ?? dev.watch_status;
+                        dev.transport_mode     = params[5] ?? dev.transport_mode;
+                        dev.gps_status         = params[6] ?? dev.gps_status;
+                    } else if (cleanQuery.includes('WATCH_BATTERY =') && cleanQuery.includes('WATCH_STATUS =')) {
+                        // Vitals UPDATE: [watch_battery, transport_mode, gps_status, watch_status, device_uid]
                         dev.watch_battery  = params[0] ?? dev.watch_battery;
                         dev.transport_mode = params[1] ?? dev.transport_mode;
                         dev.gps_status     = params[2] ?? dev.gps_status;
                         dev.watch_status   = params[3] ?? dev.watch_status;
-                    } else if (cleanQuery.includes('BATTERY_PERCENTAGE')) {
-                        // Telemetry UPDATE: battery_percentage, lat, lon, transport_mode, gps_status
-                        dev.battery_percentage = params[0] ?? dev.battery_percentage;
-                        dev.last_lat           = params[1] ?? dev.last_lat;
-                        dev.last_lon           = params[2] ?? dev.last_lon;
-                        dev.transport_mode     = params[3] ?? dev.transport_mode;
-                        dev.gps_status         = params[4] ?? dev.gps_status;
+                    } else if (cleanQuery.includes('TRANSPORT_MODE =')) {
+                        // Stationary touch: [watch_battery, watch_status, transport_mode, gps_status, targetUid]
+                        dev.watch_battery  = params[0] ?? dev.watch_battery;
+                        dev.watch_status   = params[1] ?? dev.watch_status;
+                        dev.transport_mode = params[2] ?? dev.transport_mode;
+                        dev.gps_status     = params[3] ?? dev.gps_status;
                     }
                 } else if (cleanQuery.includes('SET NAME =') || cleanQuery.includes('SET TYPE =')) {
                     dev.name = params[0] || dev.device_uid;
