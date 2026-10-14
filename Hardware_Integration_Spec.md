@@ -141,6 +141,30 @@ ACK,[device_id]#\n
 }
 ```
 
+### Scenario D: High-Volume Batch Array (e.g. 300 Data Points for One Device)
+Send up to 300+ points in a single JSON array to `POST /api/tracker/update`. The server logs all 300 points into `telemetry_logs` and `vitals_logs`, updating the device's live position to the final point:
+```json
+[
+  {
+    "device_id": "DEVICE_001",
+    "transport_mode": 0,
+    "gps_status": 1,
+    "latitude": 13.0827,
+    "longitude": 80.2707,
+    "speed": 12.0,
+    "watch_status": 1,
+    "watch_battery": 95.0,
+    "hr": 72,
+    "spo2": 98.5,
+    "bp_sys": 120,
+    "bp_dia": 80,
+    "steps": 1020
+  },
+  ... (up to 300+ records)
+]
+```
+**Server Response:** `ACK,DEVICE_001,COUNT:300#`
+
 ---
 
 ## 6. Device Registration Requirement
