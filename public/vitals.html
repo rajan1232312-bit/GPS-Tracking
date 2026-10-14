@@ -978,12 +978,12 @@
             const statusDot = document.getElementById('meta-status-dot');
             const statusText = document.getElementById('meta-status');
             
-            // Check if vitals is recent (within 2 minutes) for real-time Online status
+            // Check if vitals is recent (within 6 minutes to accommodate the 5-minute watch reporting cycle)
             let isOnline = false;
             if (vitals && vitals.timestamp) {
                 const vtDate = new Date(vitals.timestamp + (String(vitals.timestamp).endsWith('Z') ? '' : 'Z'));
                 const timeDiff = Date.now() - vtDate.getTime();
-                if (!isNaN(vtDate.getTime()) && timeDiff <= 2 * 60 * 1000) {
+                if (!isNaN(vtDate.getTime()) && timeDiff <= 6 * 60 * 1000) {
                     isOnline = true;
                 }
             }

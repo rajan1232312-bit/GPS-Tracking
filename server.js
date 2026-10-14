@@ -441,8 +441,8 @@ app.get('/api/devices', (req, res) => {
             let isOnline = false;
             if (device.last_seen) {
                 const lastSeenDate = parseLastSeenDate(device.last_seen);
-                // Within 2 minutes is considered Online
-                if (lastSeenDate && (now - lastSeenDate.getTime()) <= 2 * 60 * 1000) {
+                // Online threshold: 6 minutes (accommodates 5-minute watch reporting cycle with a 1-min network grace buffer)
+                if (lastSeenDate && (now - lastSeenDate.getTime()) <= 6 * 60 * 1000) {
                     isOnline = true;
                 }
             }

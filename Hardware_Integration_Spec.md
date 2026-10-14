@@ -184,7 +184,16 @@ Unregistered devices will be rejected with `Validation Failed: Device not found 
 ## 7. Throughput & High-Concurrency Performance
 
 * **Burst Capacity:** The backend is tuned with 30 concurrent database workers and indexed tables to absorb simultaneous bursts of **200–300 device packets in ~0.10 seconds** with zero slowdown.
-* **Recommended Reporting Interval:**
-  * **Moving Tracker:** 5 to 10 seconds per packet.
-  * **Stationary Tracker:** 15 to 30 seconds per packet (the backend automatically filters stationary coordinates to optimize database I/O while keeping the live UI pin active).
+* **Recommended Reporting Intervals:**
+  * **Moving GPS Tracker:** 5 to 10 seconds per packet.
+  * **Stationary GPS Tracker:** 15 to 30 seconds per packet (the backend automatically filters stationary coordinates to optimize database I/O while keeping the live UI pin active).
+  * **Smartwatch / Health Vitals:** **Every 5 minutes (300 seconds) once** per device.
+* **Heartbeat & Online Status Buffer:**
+  * The server and vitals dashboard maintain a **6-minute (360-second) active window** for watches.
+  * As long as the device transmits within its 5-minute schedule (+1 min network grace buffer), it remains continuously **Online (Green)** without flickering.
+  * If a watch is powered off or misses its 5-minute check-in, it automatically transitions to **Offline (Grey) / Stream Paused** after 6 minutes, while retaining the last known vitals and favicons.
+* **Battery & Server Efficiency:**
+  * **Watch Battery:** The 5-minute cycle allows the microcontroller to enter deep sleep between sensor readings, extending battery life to multiple days.
+  * **Server Load:** 300 watches transmitting once every 5 minutes averages just **1 packet per second** (ultra-lean CPU < 1% and minimal database I/O).
 * **High-Throughput Gateways:** For LoRa and GSM gateway bridges aggregating many devices, use the **Raw TCP Socket (Port 5000)** for minimal bandwidth and sub-millisecond execution.
+
