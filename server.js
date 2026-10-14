@@ -438,16 +438,22 @@ app.get('/api/devices', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         const now = Date.now();
         const devices = rows.map(device => {
+            const type = normalizeDeviceType(device.type);
+            const validTransport = parseTransportMode(device.transport_mode);
+            const isWatchOrPerson = (type === 'Person' || device.watch_status !== null || device.watch_battery !== null);
+
+            // Differentiated Online Threshold:
+            // - Watches / Person (5-min reporting cycle): 6 minutes window
+            // - GPS Trackers / Vehicles (Car, Bus, Bike): 2 minutes window
+            const onlineWindowMs = isWatchOrPerson ? (6 * 60 * 1000) : (2 * 60 * 1000);
+
             let isOnline = false;
             if (device.last_seen) {
                 const lastSeenDate = parseLastSeenDate(device.last_seen);
-                // Online threshold: 6 minutes (accommodates 5-minute watch reporting cycle with a 1-min network grace buffer)
-                if (lastSeenDate && (now - lastSeenDate.getTime()) <= 6 * 60 * 1000) {
+                if (lastSeenDate && (now - lastSeenDate.getTime()) <= onlineWindowMs) {
                     isOnline = true;
                 }
             }
-            const type = normalizeDeviceType(device.type);
-            const validTransport = parseTransportMode(device.transport_mode);
             return { ...device, type, isOnline, transport_mode: validTransport };
         });
         res.json(devices);
