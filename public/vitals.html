@@ -978,20 +978,29 @@
             const statusDot = document.getElementById('meta-status-dot');
             const statusText = document.getElementById('meta-status');
             
+            // Check if vitals is recent (within 2 minutes) for real-time Online status
+            let isOnline = false;
             if (vitals && vitals.timestamp) {
-                if (statusDot) {
-                    statusDot.className = 'pulse-live-dot online';
+                const vtDate = new Date(vitals.timestamp + (String(vitals.timestamp).endsWith('Z') ? '' : 'Z'));
+                const timeDiff = Date.now() - vtDate.getTime();
+                if (!isNaN(vtDate.getTime()) && timeDiff <= 2 * 60 * 1000) {
+                    isOnline = true;
                 }
+            }
+
+            if (isOnline) {
+                if (statusDot) statusDot.className = 'pulse-live-dot online';
                 if (statusText) {
                     statusText.textContent = 'Online / Active';
                     statusText.style.color = '#34d399';
                 }
                 document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
 
-                // Hardware telemetry metadata
+                // Hardware telemetry metadata - strictly validated, no defaults
                 const transportElem = document.getElementById('meta-transport');
                 if (transportElem) {
-                    const tm = vitals.transport_mode !== undefined ? vitals.transport_mode : vitals.device_transport_mode;
+                    const rawTm = vitals.transport_mode !== undefined ? vitals.transport_mode : vitals.device_transport_mode;
+                    const tm = (rawTm === 0 || rawTm === 1 || rawTm === 2 || rawTm === '0' || rawTm === '1' || rawTm === '2') ? parseInt(rawTm, 10) : null;
                     transportElem.innerHTML = formatTransportBadge(tm);
                 }
 
@@ -1006,6 +1015,34 @@
                     const ws = vitals.watch_status !== undefined ? vitals.watch_status : vitals.device_watch_status;
                     watchElem.innerHTML = formatWatchBadge(ws);
                 }
+
+                const watchBattElem = document.getElementById('meta-watch-battery');
+                if (watchBattElem) {
+                    const wb = vitals.watch_battery !== undefined ? vitals.watch_battery : vitals.device_watch_battery;
+                    watchBattElem.innerHTML = formatWatchBattery(wb);
+                }
+
+                if (vitals.battery_percentage != null && vitals.battery_percentage !== -1) {
+                    const battElem = document.getElementById('meta-battery');
+                    if (battElem) battElem.textContent = `${vitals.battery_percentage}%`;
+                }
+            } else if (vitals && vitals.timestamp) {
+                // Device has past vitals data, but is currently Offline - do NOT show active network badge
+                if (statusDot) statusDot.className = 'pulse-live-dot';
+                if (statusText) {
+                    statusText.textContent = 'Offline / Standby';
+                    statusText.style.color = '#94a3b8';
+                }
+                document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
+
+                const transportElem = document.getElementById('meta-transport');
+                if (transportElem) transportElem.innerHTML = '<span class="empty-dash">—</span>';
+
+                const gpsElem = document.getElementById('meta-gps');
+                if (gpsElem) gpsElem.innerHTML = '<span class="empty-dash">—</span>';
+
+                const watchElem = document.getElementById('meta-watch');
+                if (watchElem) watchElem.innerHTML = '<span class="empty-dash">—</span>';
 
                 const watchBattElem = document.getElementById('meta-watch-battery');
                 if (watchBattElem) {

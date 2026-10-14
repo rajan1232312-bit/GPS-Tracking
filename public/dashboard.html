@@ -996,6 +996,7 @@
                         <th>Identifier</th>
                         <th>Type</th>
                         <th>Status</th>
+                        <th>Network</th>
                         <th>Battery</th>
                         <th>Last Location</th>
                         <th>Last Seen</th>
@@ -1561,7 +1562,34 @@
                 tableLocContainer.textContent = `${data.lat.toFixed(5)}, ${data.lon.toFixed(5)}`;
             }
             
-            // 2. Update Table Last Seen (Address • Time)
+            // 2. Update Table Status & Network to Online
+            const tableStatus = document.getElementById(`table-status-${data.id}`);
+            if(tableStatus) {
+                tableStatus.className = 'status-badge online';
+                tableStatus.textContent = 'Online';
+            }
+            const tableNet = document.getElementById(`table-network-${data.id}`);
+            if(tableNet) {
+                tableNet.innerHTML = formatTransportBadgeSm(data.transport_mode) || '<span style="color: #64748b; font-size: 0.8rem;">—</span>';
+            }
+
+            // 3. Update Sidebar Status & Transport
+            const sidebarDev = document.getElementById(`sidebar-dev-${data.id}`);
+            if(sidebarDev) {
+                const sidebarTime = document.getElementById(`sidebar-dev-time-${data.id}`);
+                if(sidebarTime) {
+                    sidebarTime.innerText = 'Online';
+                    sidebarTime.classList.remove('error');
+                }
+                const iconEl = sidebarDev.querySelector('.device-icon');
+                if(iconEl) iconEl.style.color = 'var(--success)';
+                const sidebarNet = document.getElementById(`sidebar-dev-transport-${data.id}`);
+                if(sidebarNet) {
+                    sidebarNet.innerHTML = formatTransportBadgeSm(data.transport_mode);
+                }
+            }
+            
+            // 4. Update Table Last Seen (Address • Time)
             const tableLastSeenTime = document.getElementById(`last-seen-time-${data.id}`);
             if(tableLastSeenTime) tableLastSeenTime.textContent = lastSeenFormatted;
             
@@ -1577,7 +1605,7 @@
                 }
             }
             
-            // 3. Update Details Modal if open for this device
+            // 5. Update Details Modal if open for this device
             const detailsUid = document.getElementById('details-uid-display');
             if(detailsUid && detailsUid.textContent === data.id) {
                 const detailsStatusVal = document.getElementById('details-status-val');
@@ -1606,7 +1634,7 @@
 
                 if (data.transport_mode !== undefined) {
                     const transportEl = document.getElementById('details-transport');
-                    if (transportEl) transportEl.innerHTML = formatTransportDetails(data.transport_mode);
+                    if (transportEl) transportEl.innerHTML = formatTransportDetails(data.transport_mode, true);
                 }
                 if (data.gps_status !== undefined) {
                     const gpsEl = document.getElementById('details-gps');
@@ -1625,7 +1653,7 @@
             if (!devId) return;
             console.log('Received real-time vitals update:', devId, data);
 
-            // 1. Update UI Sidebar Status to Online
+            // 1. Update UI Sidebar Status to Online & Transport
             let deviceItem = document.getElementById('sidebar-dev-' + devId);
             if (deviceItem) {
                 let statusEl = document.getElementById('sidebar-dev-time-' + devId);
@@ -1635,13 +1663,21 @@
                 }
                 let iconEl = deviceItem.querySelector('.device-icon');
                 if (iconEl) iconEl.style.color = 'var(--success)';
+                let sidebarNet = document.getElementById('sidebar-dev-transport-' + devId);
+                if (sidebarNet) {
+                    sidebarNet.innerHTML = formatTransportBadgeSm(data.transport_mode);
+                }
             }
 
-            // 2. Update Table Status Badge to Online
+            // 2. Update Table Status Badge & Network to Online
             const tableStatusBadge = document.getElementById(`table-status-${devId}`);
             if (tableStatusBadge) {
                 tableStatusBadge.className = 'status-badge online';
                 tableStatusBadge.textContent = 'Online';
+            }
+            const tableNet = document.getElementById(`table-network-${devId}`);
+            if (tableNet) {
+                tableNet.innerHTML = formatTransportBadgeSm(data.transport_mode) || '<span style="color: #64748b; font-size: 0.8rem;">—</span>';
             }
 
             // 3. Update Table Last Seen
@@ -1670,7 +1706,7 @@
 
                 if (data.transport_mode !== undefined && data.transport_mode !== null) {
                     const transportEl = document.getElementById('details-transport');
-                    if (transportEl) transportEl.innerHTML = formatTransportDetails(data.transport_mode);
+                    if (transportEl) transportEl.innerHTML = formatTransportDetails(data.transport_mode, true);
                 }
                 if (data.gps_status !== undefined && data.gps_status !== null) {
                     const gpsEl = document.getElementById('details-gps');
@@ -1744,11 +1780,14 @@
             return '';
         }
 
-        function formatTransportDetails(tm) {
+        function formatTransportDetails(tm, isOnline = true) {
+            if (!isOnline) {
+                return '<span style="color: #64748b; font-weight: 500;"><i class="fa-solid fa-power-off"></i> Disconnected (Offline)</span>';
+            }
             if (tm === 0 || tm === '0') return '<span style="color: #c084fc; font-weight: 600;"><i class="fa-solid fa-tower-broadcast"></i> LoRa / Meshtastic (0)</span>';
             if (tm === 1 || tm === '1') return '<span style="color: #60a5fa; font-weight: 600;"><i class="fa-solid fa-signal"></i> GSM / Cellular (1)</span>';
             if (tm === 2 || tm === '2') return '<span style="color: #34d399; font-weight: 600;"><i class="fa-solid fa-wifi"></i> Wi-Fi (2)</span>';
-            return '<span style="color: #94a3b8;">—</span>';
+            return '<span style="color: #64748b; font-weight: 500;">— Not Connected</span>';
         }
 
         function formatGpsDetails(status) {
@@ -1777,25 +1816,27 @@
                 if (!window.deviceMarkers) window.deviceMarkers = {};
 
                 devices.forEach(device => {
-                    const transportHtml = formatTransportBadgeSm(device.transport_mode);
-                    const gpsHtml = formatGpsMini(device.gps_status);
-                    const watchHtml = formatWatchMini(device.watch_status);
+                    const isOnline = !!device.isOnline;
+                    // Only display connected transport badge if device is Online and has validated network
+                    const transportHtml = (isOnline && device.transport_mode !== null) ? formatTransportBadgeSm(device.transport_mode) : '';
+                    const gpsHtml = (isOnline && device.gps_status !== null) ? formatGpsMini(device.gps_status) : '';
+                    const watchHtml = (isOnline && device.watch_status !== null) ? formatWatchMini(device.watch_status) : '';
 
                     // Populate Sidebar List
                     const html = `
                         <div class="device-item" id="sidebar-dev-${device.device_uid}" onclick="openDeviceDetails('${device.device_uid}')">
-                            <div class="device-icon" style="color: ${device.isOnline ? 'var(--success)' : '#ef4444'}">
+                            <div class="device-icon" style="color: ${isOnline ? 'var(--success)' : '#ef4444'}">
                                 <i class="fa-solid ${getIconClass(device.type)}"></i>
                             </div>
                             <div class="device-info">
                                 <div class="device-name">${device.device_uid}</div>
                                 <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                                    <span class="device-status ${!device.isOnline ? 'error' : ''}" id="sidebar-dev-time-${device.device_uid}">
-                                        ${device.isOnline ? 'Online' : 'Offline'}
+                                    <span class="device-status ${!isOnline ? 'error' : ''}" id="sidebar-dev-time-${device.device_uid}">
+                                        ${isOnline ? 'Online' : 'Offline'}
                                     </span>
-                                    ${transportHtml}
-                                    ${gpsHtml}
-                                    ${watchHtml}
+                                    <span id="sidebar-dev-transport-${device.device_uid}">${transportHtml}</span>
+                                    <span id="sidebar-dev-gps-${device.device_uid}">${gpsHtml}</span>
+                                    <span id="sidebar-dev-watch-${device.device_uid}">${watchHtml}</span>
                                 </div>
                             </div>
                             <div class="edit-btn" onclick="editDevice(event, '${device.device_uid}', '${device.type || 'Person'}')" title="Edit Tracker">
@@ -1812,6 +1853,9 @@
                     if(tableBody) {
                         const battery = device.battery_percentage || 0;
                         const registeredAt = device.registered_at ? formatDatePremium(device.registered_at) : 'Unknown';
+                        const netBadge = (isOnline && device.transport_mode !== null)
+                            ? formatTransportBadgeSm(device.transport_mode)
+                            : '<span style="color: #64748b; font-size: 0.8rem;">—</span>';
                         
                         let locStr = 'Unknown';
                         let timeStr = device.last_seen ? formatDatePremium(device.last_seen) : '<span style="color: var(--text-secondary); font-style: italic;">Awaiting Data...</span>';
@@ -1830,7 +1874,8 @@
                             <tr style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="viewLogs('${device.device_uid}')">
                                 <td><strong>${device.device_uid}</strong></td>
                                 <td><span style="font-size: 13px; color: var(--text-secondary);"><i class="fa-solid ${getIconClass(device.type)}" style="margin-right: 6px; color: var(--accent);"></i>${device.type || 'Person'}</span></td>
-                                <td><span class="status-badge ${device.isOnline ? 'online' : 'offline'}" id="table-status-${device.device_uid}">${device.isOnline ? 'Online' : 'Offline'}</span></td>
+                                <td><span class="status-badge ${isOnline ? 'online' : 'offline'}" id="table-status-${device.device_uid}">${isOnline ? 'Online' : 'Offline'}</span></td>
+                                <td id="table-network-${device.device_uid}">${netBadge}</td>
                                 <td id="battery-table-${device.device_uid}">${battery}%</td>
                                 <td id="loc-table-container-${device.device_uid}">${locStr}</td>
                                 <td id="last-seen-table-${device.device_uid}">${lastSeenContent}</td>
@@ -2146,7 +2191,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Network Transport</span>
-                            <span class="detail-val" id="details-transport">${formatTransportDetails(device.transport_mode)}</span>
+                            <span class="detail-val" id="details-transport">${formatTransportDetails(device.transport_mode, device.isOnline)}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">GPS Status</span>

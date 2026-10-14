@@ -83,6 +83,11 @@ if (process.env.DATABASE_URL) {
                 -- Consolidate Wearable and Health Band categories into Person
                 UPDATE devices SET type = 'Person' WHERE type IN ('Wearable', 'Health Band', 'healthband', 'wearable', 'Smartwatch') OR type ILIKE '%wearable%' OR type ILIKE '%health band%';
 
+                -- Clear invalid, sentinel (-1), or unvalidated default transport modes (strictly 0=LoRa, 1=GSM, 2=Wi-Fi)
+                UPDATE devices SET transport_mode = NULL WHERE transport_mode NOT IN (0, 1, 2) OR transport_mode = -1;
+                UPDATE telemetry_logs SET transport_mode = NULL WHERE transport_mode NOT IN (0, 1, 2) OR transport_mode = -1;
+                UPDATE vitals_logs SET transport_mode = NULL WHERE transport_mode NOT IN (0, 1, 2) OR transport_mode = -1;
+
                 -- Ensure FK constraints with CASCADE
                 ALTER TABLE telemetry_logs DROP CONSTRAINT IF EXISTS telemetry_logs_device_uid_fkey;
                 ALTER TABLE telemetry_logs ADD CONSTRAINT telemetry_logs_device_uid_fkey
@@ -109,33 +114,20 @@ const convertQuery = (query) => {
 const memoryStore = {
     devices: [
         { id: 1, device_uid: '8654020409', name: '8654020409', type: 'Car', status: 'Active',
-          last_seen: new Date().toISOString(), battery_percentage: null, watch_battery: 85, transport_mode: 2, gps_status: 1, watch_status: 1,
+          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
           last_lat: 13.0827, last_lon: 80.2707 },
         { id: 2, device_uid: 'ID:001', name: 'ID:001', type: 'Person', status: 'Active',
-          last_seen: new Date().toISOString(), battery_percentage: null, watch_battery: 95, transport_mode: 0, gps_status: 1, watch_status: 1,
+          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
           last_lat: 13.1166, last_lon: 80.1000 },
         { id: 3, device_uid: 'HEALTH:8801', name: 'HEALTH:8801', type: 'Person', status: 'Active',
-          last_seen: new Date().toISOString(), battery_percentage: null, watch_battery: 90, transport_mode: 1, gps_status: 0, watch_status: 1,
+          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
           last_lat: 13.0850, last_lon: 80.2750 },
         { id: 4, device_uid: 'Node001', name: 'Node001', type: 'Person', status: 'Active',
           last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: 0,
           last_lat: 13.0827, last_lon: 80.2707 }
     ],
-    telemetry_logs: [
-        { id: 1, device_uid: '8654020409', latitude: 13.0827, longitude: 80.2707, speed: 35.5,
-          battery_percentage: null, transport_mode: 2, gps_status: 1, timestamp: new Date().toISOString() }
-    ],
-    vitals_logs: [
-        { id: 1, device_uid: 'HEALTH:8801', heart_rate: 76, blood_pressure: '120/80', blood_pressure_sys: 120, blood_pressure_dia: 80,
-          spo2: 98.5, step_count: 5420, transport_mode: 0, gps_status: 1, watch_status: 1, watch_battery: 90.0,
-          timestamp: new Date(Date.now() - 3600000).toISOString() },
-        { id: 2, device_uid: 'ID:001', heart_rate: null, blood_pressure: '125/82', blood_pressure_sys: 125, blood_pressure_dia: 82,
-          spo2: 99.0, step_count: 7850, transport_mode: 0, gps_status: 1, watch_status: 1, watch_battery: 95.0,
-          timestamp: new Date(Date.now() - 1800000).toISOString() },
-        { id: 3, device_uid: '8654020409', heart_rate: 72, blood_pressure: '118/78', blood_pressure_sys: 118, blood_pressure_dia: 78,
-          spo2: 98.0, step_count: 3200, transport_mode: 2, gps_status: 1, watch_status: 1, watch_battery: 85.0,
-          timestamp: new Date().toISOString() }
-    ],
+    telemetry_logs: [],
+    vitals_logs: [],
     nextId: 100
 };
 

@@ -36,6 +36,21 @@ function parseIntOrNull(val) {
     return num;
 }
 
+// Strict transport mode validator: 0 = LoRa (Purple), 1 = GSM (Blue), 2 = Wi-Fi (Green)
+// Rejects sentinels like -1, invalid numbers, undefined, or null
+function parseTransportMode(val) {
+    if (val === undefined || val === null || val === '') return null;
+    if (typeof val === 'string') {
+        const s = val.trim().toLowerCase();
+        if (s === '0' || s === 'lora') return 0;
+        if (s === '1' || s === 'gsm' || s === 'cellular') return 1;
+        if (s === '2' || s === 'wifi' || s === 'wi-fi') return 2;
+    }
+    const num = Number(val);
+    if (num === 0 || num === 1 || num === 2) return num;
+    return null;
+}
+
 function normalizeDeviceType(type) {
     if (!type) return 'Person';
     const t = String(type).trim();
@@ -119,7 +134,7 @@ function processVitalsPayload(rawPayload, deviceRow) {
     else if (bpSys !== null)  { bp = `${bpSys}/—`; }
     else if (bpDia !== null)  { bp = `—/${bpDia}`; }
 
-    const transport_mode = (payload.transport_mode !== undefined && payload.transport_mode !== null) ? parseInt(payload.transport_mode, 10) : null;
+    const transport_mode = parseTransportMode(payload.transport_mode);
     const gps_status     = (payload.gps_status     !== undefined && payload.gps_status     !== null) ? parseInt(payload.gps_status,     10) : null;
     const watch_status   = (payload.watch_status   !== undefined && payload.watch_status   !== null) ? parseInt(payload.watch_status,   10) : null;
     const watch_battery  = parseNumberOrNull(payload.watch_battery);
@@ -153,7 +168,7 @@ function processVitalsPayload(rawPayload, deviceRow) {
     };
     io.emit('vitals_updated', vitalsEvent);
 
-    const tm = transport_mode === 0 ? 'LoRa' : transport_mode === 1 ? 'GSM' : transport_mode === 2 ? 'WiFi' : '?';
+    const tm = transport_mode === 0 ? 'LoRa (Purple)' : transport_mode === 1 ? 'GSM (Blue)' : transport_mode === 2 ? 'WiFi (Green)' : 'None';
     console.log(`[VITALS] ${name} via ${tm} | HR:${heartRate??'—'} BP:${bp??'—'} SpO2:${spo2??'—'} Steps:${steps??'—'} WBatt:${watch_battery??'—'}%`);
     return vitalsEvent;
 }
@@ -173,7 +188,7 @@ function processGpsPayload(payload, row) {
     const watch_battery     = parseNumberOrNull(payload.watch_battery !== undefined ? payload.watch_battery : payload.watch_battery_percent);
     const battery_percentage = watch_battery !== null ? Math.round(watch_battery) : (row.battery_percentage || null);
 
-    const transport_mode = (payload.transport_mode !== undefined && payload.transport_mode !== null) ? parseInt(payload.transport_mode, 10) : null;
+    const transport_mode = parseTransportMode(payload.transport_mode);
     const gps_status     = (payload.gps_status     !== undefined && payload.gps_status     !== null) ? parseInt(payload.gps_status,     10) : null;
 
     const now = Date.now();
@@ -218,11 +233,16 @@ function processGpsPayload(payload, row) {
             if (err) console.error('Error updating device for telemetry:', err);
         });
 
-        const tm = transport_mode === 0 ? 'LoRa' : transport_mode === 1 ? 'GSM' : transport_mode === 2 ? 'WiFi' : '?';
+        const tm = transport_mode === 0 ? 'LoRa (Purple)' : transport_mode === 1 ? 'GSM (Blue)' : transport_mode === 2 ? 'WiFi (Green)' : 'None';
         console.log(`[DB SAVE] ${targetUid} via ${tm} | GPS:${gps_status === 1 ? 'Locked' : 'NoSignal'} lat=${latitude} lon=${longitude} spd=${speedVal}`);
     } else {
-        // Always touch last_seen so stationary active devices remain accurately Online
-        db.run(`UPDATE devices SET last_seen = CURRENT_TIMESTAMP WHERE device_uid = ?`, [targetUid], function(err) {
+        // Always touch last_seen and update transport_mode/gps_status if present so stationary active devices remain accurately Online and connected
+        db.run(`
+            UPDATE devices SET last_seen = CURRENT_TIMESTAMP,
+                transport_mode = COALESCE(?, transport_mode),
+                gps_status     = COALESCE(?, gps_status)
+            WHERE device_uid = ?
+        `, [transport_mode, gps_status, targetUid], function(err) {
             if (err) console.error('Error touching last_seen for telemetry:', err);
         });
     }
@@ -340,7 +360,8 @@ app.get('/api/devices', (req, res) => {
                 }
             }
             const type = normalizeDeviceType(device.type);
-            return { ...device, type, isOnline };
+            const validTransport = parseTransportMode(device.transport_mode);
+            return { ...device, type, isOnline, transport_mode: validTransport };
         });
         res.json(devices);
     });
