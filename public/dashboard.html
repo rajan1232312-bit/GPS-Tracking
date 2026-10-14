@@ -6,7 +6,7 @@
     <title>Real-Time GPS Tracker</title>
     <meta name="description" content="High-accuracy real-time fleet tracking map">
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <!-- Leaflet CSS (Local) -->
@@ -640,6 +640,187 @@
             border: 1px solid rgba(59, 130, 246, 0.3);
         }
 
+        /* ========================================================
+           PREMIUM LEAFLET CONTROLS & ZOOM LEVEL INDICATOR
+           ======================================================== */
+        .leaflet-control-zoom {
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 12px !important;
+            background: rgba(15, 23, 42, 0.88) !important;
+            backdrop-filter: blur(14px) !important;
+            -webkit-backdrop-filter: blur(14px) !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45) !important;
+            overflow: hidden !important;
+            margin-bottom: 8px !important;
+            margin-right: 14px !important;
+        }
+
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out {
+            background: transparent !important;
+            color: #f1f5f9 !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
+            width: 38px !important;
+            height: 38px !important;
+            line-height: 38px !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        .leaflet-control-zoom-out {
+            border-bottom: none !important;
+        }
+
+        .leaflet-control-zoom-in:hover,
+        .leaflet-control-zoom-out:hover {
+            background: rgba(56, 189, 248, 0.18) !important;
+            color: #38bdf8 !important;
+        }
+
+        /* Premium Zoom Level Indicator Badge */
+        .map-zoom-control {
+            margin-bottom: 16px !important;
+            margin-right: 14px !important;
+            pointer-events: auto;
+        }
+
+        .map-zoom-badge {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.95) 100%);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            padding: 9px 13px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            user-select: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 146px;
+            cursor: pointer;
+        }
+
+        .map-zoom-badge:hover {
+            border-color: rgba(56, 189, 248, 0.45);
+            transform: translateY(-2px);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 16px rgba(56, 189, 248, 0.25);
+        }
+
+        .map-zoom-badge.is-zooming {
+            transform: scale(1.05);
+            border-color: #38bdf8;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 22px rgba(56, 189, 248, 0.55);
+        }
+
+        .zoom-badge-icon-wrap {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #38bdf8;
+            font-size: 0.85rem;
+            transition: all 0.25s ease;
+            flex-shrink: 0;
+        }
+
+        .map-zoom-badge.is-zooming .zoom-badge-icon-wrap {
+            background: rgba(56, 189, 248, 0.25);
+            transform: rotate(15deg);
+        }
+
+        .zoom-badge-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+
+        .zoom-badge-row {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .zoom-badge-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+
+        .zoom-badge-value {
+            font-family: 'Outfit', 'Inter', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #38bdf8;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            transition: color 0.2s ease;
+        }
+
+        .zoom-badge-max {
+            font-size: 0.72rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .zoom-progress-track {
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 2px 0;
+        }
+
+        .zoom-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
+            border-radius: 2px;
+            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .zoom-badge-descriptor {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        /* Attribution control styling in dark glass */
+        .leaflet-control-attribution {
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-bottom: none !important;
+            border-left: none !important;
+            border-top-right-radius: 8px !important;
+            padding: 3px 10px !important;
+            font-size: 10px !important;
+            color: #64748b !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: #94a3b8 !important;
+            text-decoration: none !important;
+        }
+
+        .leaflet-control-attribution a:hover {
+            color: #38bdf8 !important;
+            text-decoration: underline !important;
+        }
+
         /* Device Details Panel */
         .device-details-panel {
             position: absolute;
@@ -1111,6 +1292,104 @@
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+        // Position attribution control to bottom-left so bottom-right is exclusive to navigation controls
+        if (map.attributionControl) {
+            map.attributionControl.setPosition('bottomleft');
+        }
+
+        // Custom Premium Zoom Indicator Control
+        const ZoomIndicatorControl = L.Control.extend({
+            options: { position: 'bottomright' },
+            onAdd: function() {
+                const div = L.DomUtil.create('div', 'leaflet-control map-zoom-control');
+                div.innerHTML = `
+                    <div class="map-zoom-badge" id="map-zoom-badge" title="Map Zoom Level (Click to reset)">
+                        <div class="zoom-badge-icon-wrap">
+                            <i class="fa-solid fa-crosshairs" id="zoom-badge-icon"></i>
+                        </div>
+                        <div class="zoom-badge-content">
+                            <div class="zoom-badge-row">
+                                <span class="zoom-badge-label">Zoom</span>
+                                <span class="zoom-badge-value" id="zoom-badge-val">12</span>
+                                <span class="zoom-badge-max" id="zoom-badge-max">/ 22</span>
+                            </div>
+                            <div class="zoom-progress-track">
+                                <div class="zoom-progress-bar" id="zoom-progress-bar" style="width: 54.5%;"></div>
+                            </div>
+                            <div class="zoom-badge-descriptor" id="zoom-badge-tag">Metro / City</div>
+                        </div>
+                    </div>
+                `;
+                L.DomEvent.disableClickPropagation(div);
+                L.DomEvent.disableScrollPropagation(div);
+
+                // Clicking the badge resets to optimal overview zoom (12)
+                div.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    map.setZoom(12);
+                });
+
+                return div;
+            }
+        });
+        new ZoomIndicatorControl().addTo(map);
+
+        function getZoomDescriptor(z) {
+            if (z <= 3) return 'Global View';
+            if (z <= 6) return 'Regional View';
+            if (z <= 9) return 'Sub-Regional';
+            if (z <= 12) return 'Metro / City';
+            if (z <= 14) return 'District / Town';
+            if (z <= 16) return 'Neighborhood';
+            if (z <= 18) return 'Street Level';
+            if (z <= 20) return 'Block Level';
+            return 'High Precision';
+        }
+
+        function getActiveMaxZoom() {
+            let maxZ = 22;
+            map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer && layer.options && layer.options.maxZoom) {
+                    maxZ = layer.options.maxZoom;
+                }
+            });
+            return maxZ;
+        }
+
+        let zoomSettleTimeout = null;
+        function updateZoomIndicator(isZooming = false) {
+            const valElem = document.getElementById('zoom-badge-val');
+            const maxElem = document.getElementById('zoom-badge-max');
+            const barElem = document.getElementById('zoom-progress-bar');
+            const tagElem = document.getElementById('zoom-badge-tag');
+            const badge = document.getElementById('map-zoom-badge');
+            if (!valElem || !badge) return;
+
+            const zoom = map.getZoom();
+            const maxZ = getActiveMaxZoom();
+            const formattedZoom = Number.isInteger(zoom) ? zoom : zoom.toFixed(1);
+
+            valElem.textContent = formattedZoom;
+            if (maxElem) maxElem.textContent = `/ ${maxZ}`;
+            if (tagElem) tagElem.textContent = getZoomDescriptor(Math.round(zoom));
+
+            const pct = Math.min(100, Math.max(5, (zoom / maxZ) * 100));
+            if (barElem) barElem.style.width = `${pct}%`;
+
+            if (isZooming) {
+                badge.classList.add('is-zooming');
+                clearTimeout(zoomSettleTimeout);
+                zoomSettleTimeout = setTimeout(() => {
+                    badge.classList.remove('is-zooming');
+                }, 350);
+            }
+        }
+
+        map.on('zoom', () => updateZoomIndicator(true));
+        map.on('zoomend', () => updateZoomIndicator(false));
+        // Initial sync
+        setTimeout(() => updateZoomIndicator(false), 100);
+
         // Modal Logic
         const addBtn = document.getElementById('add-tracker-btn');
         const modal = document.getElementById('add-tracker-modal');
@@ -1147,6 +1426,8 @@
                 });
                 // Add selected layer
                 mapLayers[layerId].addTo(map);
+                // Update zoom indicator bounds for newly selected tile layer (OSM, Satellite, etc.)
+                updateZoomIndicator(false);
             });
         });
 
