@@ -1271,11 +1271,64 @@
             osmsat: osmSatLayer
         };
 
-        // Initialize Map
+        // Initialize Map with strict integer zoom snapping
         const map = L.map('map', {
             zoomControl: false,
-            maxZoom: 22
+            maxZoom: 22,
+            zoomDelta: 1,
+            zoomSnap: 1,
+            scrollWheelZoom: false // Controlled by our precision single-step handler below
         }).setView([13.0827, 80.2707], 12);
+
+        // Strict single-step zoom controls (10 -> 11 -> 12 -> 13 -> 14 in correct sequential order)
+        map.zoomIn = function(delta) {
+            const currentZoom = Math.round(map.getZoom());
+            const maxZ = getActiveMaxZoom();
+            if (currentZoom < maxZ) {
+                map.setZoom(currentZoom + 1);
+            }
+            return this;
+        };
+
+        map.zoomOut = function(delta) {
+            const currentZoom = Math.round(map.getZoom());
+            const minZ = map.getMinZoom();
+            if (currentZoom > minZ) {
+                map.setZoom(currentZoom - 1);
+            }
+            return this;
+        };
+
+        // Precision mouse wheel handler: strictly steps 1 level at a time around cursor
+        let isWheelZooming = false;
+        const mapContainer = document.getElementById('map');
+        if (mapContainer) {
+            mapContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (isWheelZooming) return;
+
+                const currentZoom = Math.round(map.getZoom());
+                const mousePos = map.mouseEventToContainerPoint(e);
+
+                if (e.deltaY < 0) {
+                    // Scroll UP -> Zoom IN by strictly +1 (e.g. 10 -> 11 -> 12 -> 13 -> 14)
+                    const maxZ = getActiveMaxZoom();
+                    if (currentZoom < maxZ) {
+                        isWheelZooming = true;
+                        map.setZoomAround(mousePos, currentZoom + 1);
+                        setTimeout(() => { isWheelZooming = false; }, 140);
+                    }
+                } else if (e.deltaY > 0) {
+                    // Scroll DOWN -> Zoom OUT by strictly -1 (e.g. 14 -> 13 -> 12 -> 11 -> 10)
+                    const minZ = map.getMinZoom();
+                    if (currentZoom > minZ) {
+                        isWheelZooming = true;
+                        map.setZoomAround(mousePos, currentZoom - 1);
+                        setTimeout(() => { isWheelZooming = false; }, 140);
+                    }
+                }
+            }, { passive: false });
+        }
 
         // Remove hacky slideTo logic, use CSS hardware acceleration instead
         map.on('zoomstart', () => {
@@ -1365,13 +1418,13 @@
             const badge = document.getElementById('map-zoom-badge');
             if (!valElem || !badge) return;
 
-            const zoom = map.getZoom();
+            // Strict integer zoom level (e.g. 10, 11, 12, 13, 14, 15...)
+            const zoom = Math.round(map.getZoom());
             const maxZ = getActiveMaxZoom();
-            const formattedZoom = Number.isInteger(zoom) ? zoom : zoom.toFixed(1);
 
-            valElem.textContent = formattedZoom;
+            valElem.textContent = zoom;
             if (maxElem) maxElem.textContent = `/ ${maxZ}`;
-            if (tagElem) tagElem.textContent = getZoomDescriptor(Math.round(zoom));
+            if (tagElem) tagElem.textContent = getZoomDescriptor(zoom);
 
             const pct = Math.min(100, Math.max(5, (zoom / maxZ) * 100));
             if (barElem) barElem.style.width = `${pct}%`;
@@ -1381,7 +1434,7 @@
                 clearTimeout(zoomSettleTimeout);
                 zoomSettleTimeout = setTimeout(() => {
                     badge.classList.remove('is-zooming');
-                }, 350);
+                }, 300);
             }
         }
 
