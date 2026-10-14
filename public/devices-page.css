@@ -7,9 +7,16 @@
     z-index: 500;
     background-color: var(--bg-color);
     display: none; /* Hidden by default */
-    padding: 40px 40px 40px 380px;
+    padding: 40px 40px 40px 400px;
     overflow-y: auto;
     color: #fff;
+    box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+    #devices-page {
+        padding: 24px 16px 90px 16px;
+    }
 }
 
 #devices-page.active {

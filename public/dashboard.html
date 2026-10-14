@@ -945,12 +945,289 @@
             border-top-color: rgba(15, 23, 42, 0.9) !important;
         }
 
+        /* ========================================================
+           RESPONSIVE MOBILE & COMPACT DISPLAY ARCHITECTURE
+           ======================================================== */
+
+        /* Mobile Top Floating Command Bar (Hidden on Desktop) */
+        .mobile-top-bar {
+            display: none;
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 1050;
+        }
+
+        .mobile-toggle-btn {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            padding: 10px 16px;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            transition: all 0.25s ease;
+        }
+
+        .mobile-toggle-btn:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+        }
+
+        .mobile-toggle-btn i {
+            color: var(--accent);
+            font-size: 0.95rem;
+        }
+
+        .mobile-count-pill {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            line-height: 1;
+        }
+
+        /* Mobile Sidebar Header & Backdrop (Hidden on Desktop) */
+        .mobile-sidebar-top {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px 10px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(11, 15, 25, 0.4);
+        }
+
+        .mobile-sidebar-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #f8fafc;
+        }
+
+        .mobile-sidebar-close-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #94a3b8;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .mobile-sidebar-close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1150;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* --- 1. Shorter Desktop & Laptop Screens (Height <= 750px) --- */
+        @media (max-height: 750px) {
+            .sidebar {
+                top: 10px !important;
+                bottom: 10px !important;
+                border-radius: 18px !important;
+            }
+
+            .sidebar-header {
+                padding: 14px 18px 8px !important;
+            }
+
+            .search-wrap {
+                padding: 6px 10px !important;
+            }
+
+            .device-list {
+                padding: 8px 12px !important;
+                gap: 8px !important;
+            }
+
+            .device-item {
+                padding: 10px 12px !important;
+                gap: 10px !important;
+                border-radius: 12px !important;
+            }
+
+            .sidebar-footer {
+                padding: 6px 4px !important;
+                margin: 8px !important;
+                border-radius: 12px !important;
+                gap: 2px !important;
+            }
+
+            .nav-item {
+                padding: 4px 2px !important;
+            }
+
+            .device-details-panel {
+                top: 10px !important;
+                bottom: 10px !important;
+                border-radius: 18px !important;
+            }
+        }
+
+        /* --- 2. Mobile Devices & Small Tablets (Width <= 768px) --- */
+        @media (max-width: 768px) {
+            .mobile-top-bar {
+                display: block;
+            }
+
+            .sidebar-backdrop {
+                display: block;
+            }
+
+            .mobile-sidebar-top {
+                display: flex;
+            }
+
+            /* Sidebar transforms into a floating slide-over drawer */
+            .sidebar {
+                position: fixed !important;
+                top: 12px !important;
+                bottom: 12px !important;
+                left: 12px !important;
+                width: calc(100vw - 24px) !important;
+                max-width: 360px !important;
+                z-index: 1200 !important;
+                transform: translateX(calc(-100% - 30px));
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+                border-radius: 20px !important;
+                box-shadow: none !important;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+                box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.25) !important;
+            }
+
+            /* Compact Layer Switcher for Mobile */
+            .layer-switcher {
+                top: 14px !important;
+                right: 14px !important;
+                z-index: 1050 !important;
+            }
+
+            .layer-dropdown-btn {
+                padding: 10px 14px !important;
+                font-size: 0.82rem !important;
+                border-radius: 12px !important;
+                gap: 6px !important;
+            }
+
+            /* Responsive Device Details Bottom Sheet */
+            .device-details-panel {
+                position: fixed !important;
+                top: auto !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                max-height: 85vh !important;
+                border-radius: 24px 24px 0 0 !important;
+                z-index: 2100 !important;
+                transform: translateY(100%);
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            }
+
+            .device-details-panel.active {
+                right: 0 !important;
+                transform: translateY(0);
+            }
+
+            /* Zoom Controls Mobile safe padding */
+            .leaflet-control-zoom {
+                margin-right: 12px !important;
+                margin-bottom: 6px !important;
+            }
+
+            .map-zoom-control {
+                margin-right: 12px !important;
+                margin-bottom: 14px !important;
+            }
+
+            .map-zoom-badge {
+                padding: 8px 12px !important;
+                min-width: 132px !important;
+            }
+
+            /* History Panel Bottom Sheet */
+            #history-panel {
+                top: auto !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                border-radius: 24px 24px 0 0 !important;
+                max-height: 85vh !important;
+            }
+        }
+
     </style>
 </head>
 <body>
-    
+    <!-- Mobile Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- Mobile Top Navigation Bar -->
+    <div class="mobile-top-bar" id="mobile-top-bar">
+        <button class="mobile-toggle-btn" id="mobile-sidebar-toggle" title="Toggle Fleet Trackers">
+            <i class="fa-solid fa-bars-staggered"></i>
+            <span>Trackers</span>
+            <span class="mobile-count-pill" id="mobile-device-count">0</span>
+        </button>
+    </div>
+
     <!-- Left Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="main-sidebar">
+        <!-- Mobile Sidebar Header (Hidden on Desktop) -->
+        <div class="mobile-sidebar-top" id="mobile-sidebar-top">
+            <div class="mobile-sidebar-title">
+                <i class="fa-solid fa-satellite-dish" style="color: var(--accent);"></i>
+                <span>Fleet Command</span>
+            </div>
+            <button class="mobile-sidebar-close-btn" id="mobile-sidebar-close" title="Close Panel">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
         <!-- Header -->
         <div class="sidebar-header">
             <div class="search-wrap">
@@ -2168,6 +2445,7 @@
                 if(tableBody) tableBody.innerHTML = '';
                 
                 if (!window.deviceMarkers) window.deviceMarkers = {};
+                updateMobileTrackerCount(devices.length);
 
                 devices.forEach(device => {
                     const isOnline = !!device.isOnline;
@@ -2501,6 +2779,11 @@
 
         async function openDeviceDetails(uid) {
             try {
+                // Auto-close sidebar on mobile so the camera flies to the pointer and it's 100% visible
+                if (window.innerWidth <= 768 && typeof toggleMobileSidebar === 'function') {
+                    toggleMobileSidebar(false);
+                }
+
                 const res = await fetch('/api/devices');
                 const devices = await res.json();
                 const device = devices.find(d => d.device_uid === uid);
@@ -2646,6 +2929,7 @@
 
         if(navMap && navDevices && devicesPage) {
             navMap.addEventListener('click', () => {
+                if (window.innerWidth <= 768 && typeof toggleMobileSidebar === 'function') toggleMobileSidebar(false);
                 navMap.classList.add('active');
                 navDevices.classList.remove('active');
                 
@@ -2660,6 +2944,7 @@
                 if(typeof clearHistoryTrack === 'function') clearHistoryTrack();
             });
             navDevices.addEventListener('click', () => {
+                if (window.innerWidth <= 768 && typeof toggleMobileSidebar === 'function') toggleMobileSidebar(false);
                 navDevices.classList.add('active');
                 navMap.classList.remove('active');
                 
@@ -2868,6 +3153,50 @@
             historyStartMarker = null;
             historyEndMarker = null;
             document.getElementById('history-stats').style.display = 'none';
+        }
+
+        // ========================================================
+        // MOBILE COMMAND CENTER & DRAWER CONTROLLER
+        // ========================================================
+        const mobileToggleBtn = document.getElementById('mobile-sidebar-toggle');
+        const mobileCloseBtn = document.getElementById('mobile-sidebar-close');
+        const sidebarEl = document.getElementById('main-sidebar');
+        const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+        const mobileDeviceCount = document.getElementById('mobile-device-count');
+
+        function toggleMobileSidebar(forceState) {
+            if (!sidebarEl) return;
+            const isOpen = typeof forceState === 'boolean' ? forceState : !sidebarEl.classList.contains('open');
+            if (isOpen) {
+                sidebarEl.classList.add('open');
+                if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+            } else {
+                sidebarEl.classList.remove('open');
+                if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+            }
+        }
+
+        if (mobileToggleBtn) {
+            mobileToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMobileSidebar(true);
+            });
+        }
+        if (mobileCloseBtn) {
+            mobileCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMobileSidebar(false);
+            });
+        }
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', () => toggleMobileSidebar(false));
+        }
+
+        function updateMobileTrackerCount(count) {
+            if (mobileDeviceCount) {
+                const num = count !== undefined ? count : (window.deviceMarkers ? Object.keys(window.deviceMarkers).length : 0);
+                mobileDeviceCount.textContent = num;
+            }
         }
 
     </script>
