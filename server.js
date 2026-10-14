@@ -126,18 +126,28 @@ function processVitalsPayload(rawPayload, deviceRow) {
     let bp    = null;
 
     if (payload.blood_pressure || payload.bp) {
-        bp = String(payload.blood_pressure || payload.bp).trim();
-        if (bpSys === null || bpDia === null) {
-            const parts = bp.split('/');
-            if (parts.length === 2) { bpSys = parseIntOrNull(parts[0]); bpDia = parseIntOrNull(parts[1]); }
+        const rawBp = String(payload.blood_pressure || payload.bp).trim();
+        if (rawBp === '-1' || rawBp === '-1/-1') {
+            bp = null;
+            bpSys = null;
+            bpDia = null;
+        } else {
+            bp = rawBp;
+            if (bpSys === null || bpDia === null) {
+                const parts = bp.split('/');
+                if (parts.length === 2) {
+                    bpSys = parseIntOrNull(parts[0]);
+                    bpDia = parseIntOrNull(parts[1]);
+                }
+            }
         }
     } else if (bpSys !== null && bpDia !== null) { bp = `${bpSys}/${bpDia}`; }
     else if (bpSys !== null)  { bp = `${bpSys}/—`; }
     else if (bpDia !== null)  { bp = `—/${bpDia}`; }
 
     const transport_mode = parseTransportMode(payload.transport_mode);
-    const gps_status     = (payload.gps_status     !== undefined && payload.gps_status     !== null) ? parseInt(payload.gps_status,     10) : null;
-    const watch_status   = (payload.watch_status   !== undefined && payload.watch_status   !== null) ? parseInt(payload.watch_status,   10) : null;
+    const gps_status     = parseIntOrNull(payload.gps_status);
+    const watch_status   = parseIntOrNull(payload.watch_status);
     const watch_battery  = parseNumberOrNull(payload.watch_battery);
     const timestamp = new Date().toISOString();
 
@@ -175,23 +185,24 @@ function processVitalsPayload(rawPayload, deviceRow) {
 }
 
 // Shared GPS telemetry processing (TCP + HTTP share this)
-function processGpsPayload(payload, row, forceSave = false) {
+function processGpsPayload(rawPayload, row, forceSave = false) {
+    const payload = normalisePayload(rawPayload);
     const targetUid = row.device_uid;
     const rawLat = payload.latitude !== undefined ? payload.latitude : payload.lat;
     const rawLon = payload.longitude !== undefined ? payload.longitude : payload.lon;
-    const hasCoordinates = (rawLat !== undefined && rawLon !== undefined && rawLat !== null && rawLon !== null);
+    const hasCoordinates = (rawLat !== undefined && rawLon !== undefined && rawLat !== null && rawLon !== null && rawLat !== -1 && rawLon !== -1 && rawLat !== '-1' && rawLon !== '-1');
     if (!hasCoordinates) return;
 
     const latitude  = parseFloat(rawLat);
     const longitude = parseFloat(rawLon);
     const speedVal  = parseFloat(payload.speed || 0);
 
-    const watch_status      = parseIntOrNull(payload.watch_status);
-    const watch_battery     = parseNumberOrNull(payload.watch_battery !== undefined ? payload.watch_battery : payload.watch_battery_percent);
+    const watch_status       = parseIntOrNull(payload.watch_status);
+    const watch_battery      = parseNumberOrNull(payload.watch_battery !== undefined ? payload.watch_battery : payload.watch_battery_percent);
     const battery_percentage = watch_battery !== null ? Math.round(watch_battery) : (row.battery_percentage || null);
 
     const transport_mode = parseTransportMode(payload.transport_mode);
-    const gps_status     = (payload.gps_status     !== undefined && payload.gps_status     !== null) ? parseInt(payload.gps_status,     10) : null;
+    const gps_status     = parseIntOrNull(payload.gps_status);
 
     const now = Date.now();
     let shouldSaveToDb = false;
@@ -280,14 +291,15 @@ const tcpServer = net.createServer((socket) => {
             if (payload && device_uid) {
                 db.get(`SELECT * FROM devices WHERE (device_uid = ? OR name = ?) AND status = 'Active'`, [device_uid, device_uid], (err, row) => {
                     if (err) { console.error('DB Error:', err); return; }
-                    if (row) {
-                        console.log(`Validation Passed: Device ${row.device_uid} is valid.`);
-                        processVitalsPayload(payload, row);
-                        processGpsPayload(payload, row, lines.length > 1);
-                        socket.write(`ACK,${row.device_uid}#\n`);
-                    } else {
-                        console.log(`Validation Failed: No active device found matching '${device_uid}'.`);
+                    if (!row) {
+                        console.log(`Auto-registering TCP device on first transmission: ${device_uid}`);
+                        db.run(`INSERT INTO devices (device_uid, name, type, status) VALUES (?, ?, 'Person', 'Active')`, [device_uid, device_uid], () => {});
+                        row = { device_uid, name: device_uid, type: 'Person', status: 'Active', last_seen: null, last_lat: 13.0827, last_lon: 80.2707 };
                     }
+                    console.log(`Validation Passed: Device ${row.device_uid} is valid.`);
+                    processVitalsPayload(payload, row);
+                    processGpsPayload(payload, row, lines.length > 1);
+                    socket.write(`ACK,${row.device_uid}#\n`);
                 });
             } else {
                 console.log('Invalid payload: missing device identifier.');
@@ -335,12 +347,30 @@ app.post('/api/tracker/update', (req, res) => {
     const placeholders = uniqueUids.map(() => '?').join(',');
     db.all(`SELECT * FROM devices WHERE (device_uid IN (${placeholders}) OR name IN (${placeholders})) AND status = 'Active'`, [...uniqueUids, ...uniqueUids], (err, rows) => {
         if (err) return res.status(500).json({ error: 'DB Error' });
-        if (!rows || rows.length === 0) return res.status(401).send('Validation Failed: Devices not found or inactive');
 
         const activeRowMap = new Map();
-        for (const row of rows) {
-            activeRowMap.set(row.device_uid, row);
-            if (row.name) activeRowMap.set(row.name, row);
+        if (rows) {
+            for (const row of rows) {
+                activeRowMap.set(row.device_uid, row);
+                if (row.name) activeRowMap.set(row.name, row);
+            }
+        }
+
+        // Auto-register any incoming devices not yet in the database so hardware data is never rejected
+        for (const uid of uniqueUids) {
+            if (!activeRowMap.has(uid)) {
+                console.log(`Auto-registering device on first transmission: ${uid}`);
+                db.run(`INSERT INTO devices (device_uid, name, type, status) VALUES (?, ?, 'Person', 'Active')`, [uid, uid], () => {});
+                activeRowMap.set(uid, {
+                    device_uid: uid,
+                    name: uid,
+                    type: 'Person',
+                    status: 'Active',
+                    last_seen: null,
+                    last_lat: 13.0827,
+                    last_lon: 80.2707
+                });
+            }
         }
 
         let processedCount = 0;
@@ -348,10 +378,7 @@ app.post('/api/tracker/update', (req, res) => {
 
         for (const [uid, packets] of deviceMap.entries()) {
             const row = activeRowMap.get(uid);
-            if (!row) {
-                console.log(`Validation Failed: No active device found matching '${uid}'.`);
-                continue;
-            }
+            if (!row) continue;
             ackDevices.push(row.device_uid);
             console.log(`Processing ${packets.length} packet(s) for Device ${row.device_uid}`);
             for (const packet of packets) {
@@ -388,12 +415,28 @@ app.post('/api/vitals/update', (req, res) => {
     const placeholders = uniqueUids.map(() => '?').join(',');
     db.all(`SELECT * FROM devices WHERE (device_uid IN (${placeholders}) OR name IN (${placeholders})) AND status = 'Active'`, [...uniqueUids, ...uniqueUids], (err, rows) => {
         if (err) return res.status(500).json({ error: 'DB Error' });
-        if (!rows || rows.length === 0) return res.status(401).json({ error: 'Validation Failed: Devices not found or inactive' });
 
         const activeRowMap = new Map();
-        for (const row of rows) {
-            activeRowMap.set(row.device_uid, row);
-            if (row.name) activeRowMap.set(row.name, row);
+        if (rows) {
+            for (const row of rows) {
+                activeRowMap.set(row.device_uid, row);
+                if (row.name) activeRowMap.set(row.name, row);
+            }
+        }
+
+        // Auto-register any incoming devices not yet in the database
+        for (const uid of uniqueUids) {
+            if (!activeRowMap.has(uid)) {
+                console.log(`Auto-registering vitals device on first transmission: ${uid}`);
+                db.run(`INSERT INTO devices (device_uid, name, type, status) VALUES (?, ?, 'Person', 'Active')`, [uid, uid], () => {});
+                activeRowMap.set(uid, {
+                    device_uid: uid,
+                    name: uid,
+                    type: 'Person',
+                    status: 'Active',
+                    last_seen: null
+                });
+            }
         }
 
         let processedCount = 0;
@@ -401,13 +444,11 @@ app.post('/api/vitals/update', (req, res) => {
 
         for (const [uid, packets] of deviceMap.entries()) {
             const row = activeRowMap.get(uid);
-            if (!row) {
-                console.log(`Validation Failed (Vitals): No active device found matching '${uid}'.`);
-                continue;
-            }
+            if (!row) continue;
             console.log(`Processing ${packets.length} vitals packet(s) for Device ${row.device_uid}`);
             for (const packet of packets) {
                 lastResult = processVitalsPayload(packet, row);
+                processGpsPayload(packet, row, isBatch);
                 processedCount++;
             }
         }

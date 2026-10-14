@@ -142,7 +142,10 @@ const memoryStore = {
           last_lat: 13.0850, last_lon: 80.2750 },
         { id: 4, device_uid: 'Node001', name: 'Node001', type: 'Person', status: 'Active',
           last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: 0,
-          last_lat: 13.0827, last_lon: 80.2707 }
+          last_lat: 13.0827, last_lon: 80.2707 },
+        { id: 5, device_uid: 'DEVICE_001', name: 'DEVICE_001', type: 'Person', status: 'Active',
+          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
+          last_lat: 13.124505, last_lon: 80.094435 }
     ],
     telemetry_logs: [],
     vitals_logs: [],

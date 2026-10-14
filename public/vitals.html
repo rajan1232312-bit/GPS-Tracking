@@ -602,9 +602,6 @@
                 <a href="/logs.html" class="nav-btn">
                     <i class="fa-solid fa-list-ul"></i> System Logs
                 </a>
-                <a href="/register.html" class="nav-btn">
-                    <i class="fa-solid fa-plus"></i> Add Device
-                </a>
             </nav>
         </header>
 
@@ -618,10 +615,6 @@
             </div>
 
             <div class="device-meta-badges">
-                <div class="meta-pill">
-                    <span class="pulse-live-dot" id="meta-status-dot"></span>
-                    <span>Status: <strong id="meta-status" style="color: #94a3b8;">Waiting for Data</strong></span>
-                </div>
                 <div class="meta-pill" id="meta-pill-transport">
                     <i class="fa-solid fa-tower-broadcast" style="color: #c084fc;"></i>
                     <span>Transport: <strong id="meta-transport">—</strong></span>
@@ -637,10 +630,6 @@
                 <div class="meta-pill" id="meta-pill-watch-batt">
                     <i class="fa-solid fa-bolt" style="color: #facc15;"></i>
                     <span>Watch Batt: <strong id="meta-watch-battery">—</strong></span>
-                </div>
-                <div class="meta-pill">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span>Last Transmission: <strong id="meta-last-seen">Waiting for data...</strong></span>
                 </div>
             </div>
         </section>
@@ -814,7 +803,7 @@
                     </thead>
                     <tbody id="vitals-stream-body">
                         <tr>
-                            <td colspan="8" class="empty-state">
+                            <td colspan="11" class="empty-state">
                                 <i class="fa-solid fa-circle-notch fa-spin"></i>
                                 <p>Loading vitals data...</p>
                             </td>
@@ -928,7 +917,7 @@
                 } else {
                     vitalsStreamBody.innerHTML = `
                         <tr>
-                            <td colspan="8" class="empty-state">
+                            <td colspan="11" class="empty-state">
                                 <i class="fa-solid fa-inbox"></i>
                                 <p>No vitals records received yet for this device.</p>
                             </td>
@@ -949,14 +938,14 @@
         }
 
         function formatGpsBadge(status) {
-            if (status === 1 || status === '1') return '<span class="vital-badge-inline badge-gps-on"><i class="fa-solid fa-satellite"></i> Locked</span>';
-            if (status === 0 || status === '0') return '<span class="vital-badge-inline badge-gps-off"><i class="fa-solid fa-satellite-dish"></i> No Fix</span>';
+            if (status === 1 || status === '1') return '<span class="vital-badge-inline badge-gps-on"><i class="fa-solid fa-satellite"></i> Connected</span>';
+            if (status === 0 || status === '0') return '<span class="vital-badge-inline badge-gps-off"><i class="fa-solid fa-satellite-dish"></i> Disconnected</span>';
             return '<span class="empty-dash">—</span>';
         }
 
         function formatWatchBadge(status) {
-            if (status === 1 || status === '1') return '<span class="vital-badge-inline badge-watch-on"><i class="fa-solid fa-stopwatch-20"></i> Paired</span>';
-            if (status === 0 || status === '0') return '<span class="vital-badge-inline badge-watch-off"><i class="fa-solid fa-slash"></i> Offline</span>';
+            if (status === 1 || status === '1') return '<span class="vital-badge-inline badge-watch-on"><i class="fa-solid fa-stopwatch-20"></i> Connected</span>';
+            if (status === 0 || status === '0') return '<span class="vital-badge-inline badge-watch-off"><i class="fa-solid fa-slash"></i> Disconnected</span>';
             return '<span class="empty-dash">—</span>';
         }
 
@@ -974,7 +963,7 @@
                 return;
             }
 
-            // Meta Bar - ONLY show Online if actual vitals data has been received from the backend
+            // Meta Bar Status (if present)
             const statusDot = document.getElementById('meta-status-dot');
             const statusText = document.getElementById('meta-status');
             
@@ -1005,7 +994,8 @@
                 return;
             }
 
-            document.getElementById('meta-last-seen').textContent = formatDateTime(vitals.timestamp);
+            const lastSeenElem = document.getElementById('meta-last-seen');
+            if (lastSeenElem) lastSeenElem.textContent = formatDateTime(vitals.timestamp);
 
             // Hardware telemetry metadata (favicons) - ALWAYS display the last received hardware data without defaults
             const transportElem = document.getElementById('meta-transport');
@@ -1203,7 +1193,8 @@
                 statusText.textContent = 'Waiting for Data';
                 statusText.style.color = '#94a3b8';
             }
-            document.getElementById('meta-last-seen').textContent = 'Waiting for data...';
+            const lastSeenElem = document.getElementById('meta-last-seen');
+            if (lastSeenElem) lastSeenElem.textContent = 'Waiting for data...';
             const battElem = document.getElementById('meta-battery');
             if (battElem) battElem.textContent = '--%';
             const transportElem = document.getElementById('meta-transport');
@@ -1300,8 +1291,17 @@
         // --- Socket.IO Real-Time Incoming Vitals Hook ---
         const socket = io();
         socket.on('vitals_updated', (data) => {
-            const targetUid = deviceSelect.value;
             const devUid = data.device_uid || data.id;
+
+            // Dynamically register new device in selector if not present
+            if (devUid && !Array.from(deviceSelect.options).some(o => o.value === devUid)) {
+                const opt = document.createElement('option');
+                opt.value = devUid;
+                opt.textContent = `${data.name || devUid} (${devUid})`;
+                deviceSelect.appendChild(opt);
+            }
+
+            const targetUid = deviceSelect.value;
 
             if (targetUid === 'all' || targetUid === devUid) {
                 // Update KPI Cards
@@ -1336,8 +1336,17 @@
 
         // Also listen to real-time tracker packets (device_moved) to update watch data and favicons live
         socket.on('device_moved', (data) => {
-            const targetUid = deviceSelect.value;
             const devUid = data.id || data.device_uid;
+
+            // Dynamically register new device in selector if not present
+            if (devUid && !Array.from(deviceSelect.options).some(o => o.value === devUid)) {
+                const opt = document.createElement('option');
+                opt.value = devUid;
+                opt.textContent = `${data.name || devUid} (${devUid})`;
+                deviceSelect.appendChild(opt);
+            }
+
+            const targetUid = deviceSelect.value;
 
             if (targetUid === 'all' || targetUid === devUid) {
                 const statusDot = document.getElementById('meta-status-dot');

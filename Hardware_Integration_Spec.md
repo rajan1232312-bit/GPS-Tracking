@@ -167,17 +167,17 @@ Send up to 300+ points in a single JSON array to `POST /api/tracker/update`. The
 
 ---
 
-## 6. Device Registration Requirement
+## 6. Device Registration & Auto-Enrollment
 
-Before sending data, ensure the `device_id` is registered in the system:
-* Register via Web UI: `http://192.168.1.213:5001/register.html`
-* Or via API:
+* **Automatic Enrollment on First Transmission (Zero-Friction):**
+  When hardware transmits data for any device (e.g., `DEVICE_001`), the server automatically enrolls the device into the active registry as a `Person` tracker on its very first packet. No manual registration is required before deploying hardware to the field.
+* **Optional Manual Pre-Registration:**
+  Devices can also be pre-registered via API if custom names or types (`Car`, `Bus`, `Bike`) are preferred:
   ```bash
   curl -X POST http://192.168.1.213:5001/api/devices/register \
        -H "Content-Type: application/json" \
        -d '{"device_uid":"DEVICE_001","type":"Person"}'
   ```
-Unregistered devices will be rejected with `Validation Failed: Device not found or inactive`.
 
 ---
 
