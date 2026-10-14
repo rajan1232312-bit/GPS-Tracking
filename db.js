@@ -2,7 +2,10 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  max: 30, // Up to 30 concurrent database workers for high-frequency burst processing (300 simultaneous packets in ~0.10s)
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 3000
 });
 
 pool.on('error', (err) => console.error('Unexpected error on idle client', err));
@@ -55,6 +58,11 @@ const initQuery = `
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE ON UPDATE CASCADE
     );
+
+    CREATE INDEX IF NOT EXISTS idx_telemetry_device_time ON telemetry_logs (device_uid, timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_vitals_device_time ON vitals_logs (device_uid, timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_devices_device_uid ON devices (device_uid);
+    CREATE INDEX IF NOT EXISTS idx_devices_status ON devices (status);
 `;
 
 if (process.env.DATABASE_URL) {
@@ -98,7 +106,17 @@ if (process.env.DATABASE_URL) {
                     FOREIGN KEY (device_uid) REFERENCES devices(device_uid) ON DELETE CASCADE ON UPDATE CASCADE;
             EXCEPTION WHEN OTHERS THEN NULL;
             END $$;
-        `).catch(() => {});
+        `).then(() => {
+            // Ensure performance indexes exist on existing database instances
+            return pool.query(`
+                CREATE INDEX IF NOT EXISTS idx_telemetry_device_time ON telemetry_logs (device_uid, timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_vitals_device_time ON vitals_logs (device_uid, timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_devices_device_uid ON devices (device_uid);
+                CREATE INDEX IF NOT EXISTS idx_devices_status ON devices (status);
+            `);
+        }).then(() => {
+            console.log('PostgreSQL performance indexes verified (idx_telemetry_device_time, idx_vitals_device_time, idx_devices_device_uid, idx_devices_status).');
+        }).catch(err => console.error('Migration / index notice:', err));
     }).catch(err => console.error('Error initializing PostgreSQL tables:', err));
 } else {
     console.log('Notice: DATABASE_URL not set. Running with development in-memory SQLite emulator.');

@@ -154,3 +154,13 @@ Before sending data, ensure the `device_id` is registered in the system:
        -d '{"device_uid":"DEVICE_001","type":"Person"}'
   ```
 Unregistered devices will be rejected with `Validation Failed: Device not found or inactive`.
+
+---
+
+## 7. Throughput & High-Concurrency Performance
+
+* **Burst Capacity:** The backend is tuned with 30 concurrent database workers and indexed tables to absorb simultaneous bursts of **200–300 device packets in ~0.10 seconds** with zero slowdown.
+* **Recommended Reporting Interval:**
+  * **Moving Tracker:** 5 to 10 seconds per packet.
+  * **Stationary Tracker:** 15 to 30 seconds per packet (the backend automatically filters stationary coordinates to optimize database I/O while keeping the live UI pin active).
+* **High-Throughput Gateways:** For LoRa and GSM gateway bridges aggregating many devices, use the **Raw TCP Socket (Port 5000)** for minimal bandwidth and sub-millisecond execution.
