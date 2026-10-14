@@ -311,53 +311,108 @@ const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"
 app.use(express.static('public'));
 app.use(express.json({ limit: '10mb' }));
 
-// Hardware HTTP Tracker Endpoint (Unified GPS + Vitals) — Supports both single packet & batch array (e.g. 300 data points)
+// Hardware HTTP Tracker Endpoint (Unified GPS + Vitals) — Supports single packet, single-device batch, or multi-device gateway batch
 app.post('/api/tracker/update', (req, res) => {
     const rawData = req.body;
     const isBatch = Array.isArray(rawData);
     const items = isBatch ? rawData : [rawData];
     if (!items || items.length === 0) return res.status(400).send('Invalid payload: body is empty');
 
-    const first = normalisePayload(items[0]);
-    const device_uid = first && (first.device_uid || first.id);
-    if (!device_uid) return res.status(400).send('Invalid payload: device identifier is required');
+    // Group incoming items by device identifier
+    const deviceMap = new Map();
+    for (const item of items) {
+        const p = normalisePayload(item);
+        const uid = p && (p.device_uid || p.id);
+        if (!uid) continue;
+        if (!deviceMap.has(uid)) deviceMap.set(uid, []);
+        deviceMap.get(uid).push(p);
+    }
 
-    db.get(`SELECT * FROM devices WHERE (device_uid = ? OR name = ?) AND status = 'Active'`, [device_uid, device_uid], (err, row) => {
+    if (deviceMap.size === 0) return res.status(400).send('Invalid payload: device identifier is required');
+
+    // Query active devices matching all unique identifiers in the batch
+    const uniqueUids = Array.from(deviceMap.keys());
+    const placeholders = uniqueUids.map(() => '?').join(',');
+    db.all(`SELECT * FROM devices WHERE (device_uid IN (${placeholders}) OR name IN (${placeholders})) AND status = 'Active'`, [...uniqueUids, ...uniqueUids], (err, rows) => {
         if (err) return res.status(500).json({ error: 'DB Error' });
-        if (!row) return res.status(401).send('Validation Failed: Device not found or inactive');
+        if (!rows || rows.length === 0) return res.status(401).send('Validation Failed: Devices not found or inactive');
 
-        console.log(`Validation Passed (HTTP): Device ${row.device_uid} (${items.length} packet${items.length > 1 ? 's' : ''})`);
-        for (const item of items) {
-            const payload = normalisePayload(item);
-            processVitalsPayload(payload, row);
-            processGpsPayload(payload, row, isBatch);
+        const activeRowMap = new Map();
+        for (const row of rows) {
+            activeRowMap.set(row.device_uid, row);
+            if (row.name) activeRowMap.set(row.name, row);
         }
-        return res.send(`ACK,${row.device_uid}${isBatch ? `,COUNT:${items.length}` : ''}#\n`);
+
+        let processedCount = 0;
+        const ackDevices = [];
+
+        for (const [uid, packets] of deviceMap.entries()) {
+            const row = activeRowMap.get(uid);
+            if (!row) {
+                console.log(`Validation Failed: No active device found matching '${uid}'.`);
+                continue;
+            }
+            ackDevices.push(row.device_uid);
+            console.log(`Processing ${packets.length} packet(s) for Device ${row.device_uid}`);
+            for (const packet of packets) {
+                processVitalsPayload(packet, row);
+                processGpsPayload(packet, row, isBatch);
+                processedCount++;
+            }
+        }
+
+        return res.send(`ACK,${ackDevices.join(',')}${isBatch ? `,COUNT:${processedCount}` : ''}#\n`);
     });
 });
 
-// Dedicated Vitals HTTP Endpoint — Supports both single packet & batch array
+// Dedicated Vitals HTTP Endpoint — Supports single packet, single-device batch, or multi-device gateway batch
 app.post('/api/vitals/update', (req, res) => {
     const rawData = req.body;
     const isBatch = Array.isArray(rawData);
     const items = isBatch ? rawData : [rawData];
     if (!items || items.length === 0) return res.status(400).json({ error: 'Invalid payload: body is empty' });
 
-    const first = normalisePayload(items[0]);
-    const device_uid = first && (first.device_uid || first.id);
-    if (!device_uid) return res.status(400).json({ error: 'Invalid payload: device identifier is required' });
+    // Group incoming items by device identifier
+    const deviceMap = new Map();
+    for (const item of items) {
+        const p = normalisePayload(item);
+        const uid = p && (p.device_uid || p.id);
+        if (!uid) continue;
+        if (!deviceMap.has(uid)) deviceMap.set(uid, []);
+        deviceMap.get(uid).push(p);
+    }
 
-    db.get(`SELECT * FROM devices WHERE (device_uid = ? OR name = ?) AND status = 'Active'`, [device_uid, device_uid], (err, row) => {
+    if (deviceMap.size === 0) return res.status(400).json({ error: 'Invalid payload: device identifier is required' });
+
+    const uniqueUids = Array.from(deviceMap.keys());
+    const placeholders = uniqueUids.map(() => '?').join(',');
+    db.all(`SELECT * FROM devices WHERE (device_uid IN (${placeholders}) OR name IN (${placeholders})) AND status = 'Active'`, [...uniqueUids, ...uniqueUids], (err, rows) => {
         if (err) return res.status(500).json({ error: 'DB Error' });
-        if (!row) return res.status(401).json({ error: 'Validation Failed: Device not found or inactive' });
+        if (!rows || rows.length === 0) return res.status(401).json({ error: 'Validation Failed: Devices not found or inactive' });
 
-        console.log(`Validation Passed (Vitals HTTP): Device ${row.device_uid} (${items.length} packet${items.length > 1 ? 's' : ''})`);
-        let lastResult = null;
-        for (const item of items) {
-            const payload = normalisePayload(item);
-            lastResult = processVitalsPayload(payload, row);
+        const activeRowMap = new Map();
+        for (const row of rows) {
+            activeRowMap.set(row.device_uid, row);
+            if (row.name) activeRowMap.set(row.name, row);
         }
-        return res.json({ success: true, count: items.length, message: `${items.length} vitals logged successfully`, data: lastResult });
+
+        let processedCount = 0;
+        let lastResult = null;
+
+        for (const [uid, packets] of deviceMap.entries()) {
+            const row = activeRowMap.get(uid);
+            if (!row) {
+                console.log(`Validation Failed (Vitals): No active device found matching '${uid}'.`);
+                continue;
+            }
+            console.log(`Processing ${packets.length} vitals packet(s) for Device ${row.device_uid}`);
+            for (const packet of packets) {
+                lastResult = processVitalsPayload(packet, row);
+                processedCount++;
+            }
+        }
+
+        return res.json({ success: true, count: processedCount, message: `${processedCount} vitals logged successfully`, data: lastResult });
     });
 });
 

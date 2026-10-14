@@ -301,7 +301,15 @@ const db = {
         const cleanQuery = query.trim().toUpperCase();
         let rows = [];
 
-        if (cleanQuery.includes('FROM DEVICES') && !cleanQuery.includes('WHERE')) {
+        if (cleanQuery.includes('FROM DEVICES') && cleanQuery.includes('WHERE')) {
+            rows = memoryStore.devices.filter(d => {
+                if (cleanQuery.includes('STATUS =') && d.status !== 'Active') return false;
+                if (cleanQuery.includes('IN (')) {
+                    return params.includes(d.device_uid) || params.includes(d.name);
+                }
+                return params.includes(d.device_uid) || params.includes(d.name);
+            });
+        } else if (cleanQuery.includes('FROM DEVICES')) {
             rows = [...memoryStore.devices];
         } else if (cleanQuery.includes('FROM TELEMETRY_LOGS') && cleanQuery.includes('ORDER BY T.TIMESTAMP DESC')) {
             const limit  = params[params.length - 2] || 50;
