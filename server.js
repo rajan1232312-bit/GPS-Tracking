@@ -503,8 +503,10 @@ app.get('/api/devices', (req, res) => {
 
 // Delete a device
 app.delete('/api/devices/:uid', (req, res) => {
-    db.run(`DELETE FROM devices WHERE device_uid = ?`, [req.params.uid], function(err) {
+    const uid = req.params.uid;
+    db.run(`DELETE FROM devices WHERE device_uid = ?`, [uid], function(err) {
         if (err) return res.status(500).json({ error: err.message });
+        db.run(`DELETE FROM telemetry_logs WHERE device_uid = ?`, [uid], () => {});
         res.json({ success: true, deletedCount: this.changes });
     });
 });
