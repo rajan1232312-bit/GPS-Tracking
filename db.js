@@ -128,28 +128,38 @@ const convertQuery = (query) => {
     return query.replace(/\?/g, () => `$${index++}`);
 };
 
-// In-memory store fallback for local development
+// In-memory store fallback for local development (synchronized with live production data)
+let defaultDevices = [
+    { id: 1, device_uid: '!dc98ca55', name: '!dc98ca55', type: 'Person', status: 'Active',
+      last_seen: '2026-10-22T02:33:04.875Z', battery_percentage: 16, watch_battery: 16, transport_mode: 1, gps_status: 0, watch_status: 0,
+      registered_at: '2026-10-21T16:31:33.374Z', last_lat: 13.12439, last_lon: 80.09444 },
+    { id: 2, device_uid: 'DEVICE_001', name: 'DEVICE_001', type: 'Person', status: 'Active',
+      last_seen: '2026-10-21T16:24:08.336Z', battery_percentage: 50, watch_battery: 50, transport_mode: 0, gps_status: 1, watch_status: 1,
+      registered_at: '2026-10-21T16:06:57.588Z', last_lat: 13.124505, last_lon: 80.09444 },
+    { id: 3, device_uid: '!dc98ca3a', name: '!dc98ca3a', type: 'Person', status: 'Active',
+      last_seen: '2026-10-21T09:56:59.031Z', battery_percentage: 52, watch_battery: 52, transport_mode: 0, gps_status: 0, watch_status: 0,
+      registered_at: '2026-10-21T06:09:49.748Z', last_lat: 13.12681, last_lon: 80.10033 }
+];
+let defaultLogs = [];
+
+try {
+    const fs = require('fs');
+    const path = require('path');
+    const dataFilePath = path.join(__dirname, 'default_data.json');
+    if (fs.existsSync(dataFilePath)) {
+        const loaded = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+        if (loaded.devices && loaded.devices.length > 0) defaultDevices = loaded.devices;
+        if (loaded.logs && loaded.logs.length > 0) defaultLogs = loaded.logs;
+    }
+} catch (e) {
+    console.error('Error loading default_data.json:', e);
+}
+
 const memoryStore = {
-    devices: [
-        { id: 1, device_uid: '8654020409', name: '8654020409', type: 'Car', status: 'Active',
-          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
-          last_lat: 13.0827, last_lon: 80.2707 },
-        { id: 2, device_uid: 'ID:001', name: 'ID:001', type: 'Person', status: 'Active',
-          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
-          last_lat: 13.1166, last_lon: 80.1000 },
-        { id: 3, device_uid: 'HEALTH:8801', name: 'HEALTH:8801', type: 'Person', status: 'Active',
-          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
-          last_lat: 13.0850, last_lon: 80.2750 },
-        { id: 4, device_uid: 'Node001', name: 'Node001', type: 'Person', status: 'Active',
-          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: 0,
-          last_lat: 13.0827, last_lon: 80.2707 },
-        { id: 5, device_uid: 'DEVICE_001', name: 'DEVICE_001', type: 'Person', status: 'Active',
-          last_seen: null, battery_percentage: null, watch_battery: null, transport_mode: null, gps_status: null, watch_status: null,
-          last_lat: 13.124505, last_lon: 80.094435 }
-    ],
-    telemetry_logs: [],
+    devices: defaultDevices,
+    telemetry_logs: defaultLogs,
     vitals_logs: [],
-    nextId: 100
+    nextId: 2000
 };
 
 const db = {
@@ -344,7 +354,16 @@ const db = {
                 };
             });
         } else if (cleanQuery.includes('FROM TELEMETRY_LOGS') && cleanQuery.includes('WHERE DEVICE_UID = ?')) {
-            rows = memoryStore.telemetry_logs.filter(l => l.device_uid === params[0]);
+            const startTs = params[1] ? new Date(params[1]).getTime() : null;
+            const endTs = params[2] ? new Date(params[2]).getTime() : null;
+            rows = memoryStore.telemetry_logs.filter(l => {
+                if (l.device_uid !== params[0]) return false;
+                if ((l.latitude === 0 && l.longitude === 0) || l.latitude == null || l.longitude == null) return false;
+                const logTs = new Date(l.timestamp).getTime();
+                if (startTs && !isNaN(startTs) && logTs < startTs) return false;
+                if (endTs && !isNaN(endTs) && logTs > endTs) return false;
+                return true;
+            }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         } else if (cleanQuery.includes('FROM VITALS_LOGS') && cleanQuery.includes('WHERE DEVICE_UID = ?')) {
             rows = memoryStore.vitals_logs.filter(l => l.device_uid === params[0]);
         } else if (cleanQuery.includes('FROM VITALS_LOGS')) {

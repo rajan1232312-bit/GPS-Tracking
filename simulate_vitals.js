@@ -3,13 +3,13 @@ const net = require('net');
 const TCP_PORT = process.env.TCP_PORT || 5000;
 const HOST = '127.0.0.1';
 
-// Test scenarios (name is completely removed from payload; identifier alone is sufficient)
+// Test scenarios for active devices
 const testPackets = [
     {
-        scenario: "Full Health Vitals from Node001 (Shortened payload without name)",
+        scenario: "Full Health Vitals from !dc98ca55",
         payload: {
-            device_uid: "Node001",
-            battery: 94,
+            device_uid: "!dc98ca55",
+            battery: 84,
             heart_rate: 78,
             blood_pressure: "122/82",
             spo2: 98.8,
@@ -17,13 +17,13 @@ const testPackets = [
         }
     },
     {
-        scenario: "Combined GPS + Vitals without name",
+        scenario: "Combined GPS + Vitals from DEVICE_001",
         payload: {
-            device_uid: "8654020409",
-            lat: 13.0827,
-            lon: 80.2707,
+            device_uid: "DEVICE_001",
+            lat: 13.1245,
+            lon: 80.0944,
             speed: 15.0,
-            battery: 88,
+            battery: 50,
             heart_rate: 76,
             blood_pressure: "120/80",
             spo2: 98.5,
@@ -33,18 +33,17 @@ const testPackets = [
     {
         scenario: "Partial Vitals: Heart Rate is NOT received (omitted)",
         payload: {
-            device_uid: "ID:001",
-            battery: 92,
+            device_uid: "!dc98ca3a",
+            battery: 52,
             blood_pressure: "126/82",
             spo2: 99.0,
             steps: 7100
-            // heart_rate is intentionally NOT provided
         }
     },
     {
         scenario: "Partial Vitals: BP and SpO2 received, Heart Rate is null, Steps received",
         payload: {
-            device_uid: "HEALTH:8801",
+            device_uid: "!dc98ca55",
             battery: 79,
             heart_rate: null,
             blood_pressure: "118/76",

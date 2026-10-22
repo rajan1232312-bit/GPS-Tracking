@@ -1298,6 +1298,285 @@
             }
         }
 
+        /* ========================================================
+           FLOATING TRIP HISTORY CONTROL & ALLOCATED DATES HUD
+           ======================================================== */
+        .history-track-banner {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(780px, calc(100vw - 40px));
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.98) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-radius: 18px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.75), 0 0 20px rgba(245, 158, 11, 0.15);
+            z-index: 1050;
+            padding: 14px 18px;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            animation: slideDownBanner 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.3s ease;
+        }
+
+        @media (min-width: 901px) {
+            .history-track-banner {
+                left: calc(380px + (100vw - 380px - 220px) / 2);
+                transform: translateX(-50%);
+                width: min(760px, calc(100vw - 640px));
+                min-width: 480px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .history-track-banner {
+                top: 64px !important;
+                left: 10px !important;
+                right: 10px !important;
+                transform: none !important;
+                width: calc(100% - 20px) !important;
+                padding: 12px 14px !important;
+                border-radius: 14px !important;
+                max-height: 75vh;
+                overflow-y: auto;
+            }
+        }
+
+        @keyframes slideDownBanner {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .htb-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .htb-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .htb-badge {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .htb-device-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+
+        .htb-range-tag {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .htb-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .htb-action-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .htb-action-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+        }
+
+        .htb-close-btn {
+            background: rgba(239, 68, 68, 0.18);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+        }
+
+        .htb-close-btn:hover {
+            background: rgba(239, 68, 68, 0.35);
+            color: #ffffff;
+        }
+
+        .htb-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .htb-dates-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .htb-dates-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .htb-date-chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 2px 2px 6px 2px;
+            scrollbar-width: thin;
+        }
+
+        .htb-date-chips::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .htb-date-chips::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .htb-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+        }
+
+        .htb-chip:hover {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.4);
+            color: #fef3c7;
+            transform: translateY(-1px);
+        }
+
+        .htb-chip.active {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-color: #fbbf24;
+            color: #0f172a;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+        }
+
+        .htb-chip .chip-count {
+            background: rgba(0, 0, 0, 0.25);
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+        }
+
+        .htb-chip.active .chip-count {
+            background: rgba(15, 23, 42, 0.3);
+            color: #0f172a;
+            font-weight: 800;
+        }
+
+        .htb-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @media (max-width: 600px) {
+            .htb-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .htb-stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .htb-stat-label {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .htb-stat-val {
+            font-size: 0.82rem;
+            color: #ffffff;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .htb-inactive-note {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.76rem;
+            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            line-height: 1.4;
+        }
+
     </style>
 </head>
 <body>
@@ -1390,7 +1669,7 @@
             <form class="modal-form" id="add-tracker-form">
                 <div class="form-group">
                     <label>Identifier</label>
-                    <input type="text" id="add-tracker-uid" placeholder="e.g. Node001 or 8654020409..." required>
+                    <input type="text" id="add-tracker-uid" placeholder="e.g. DEVICE_001 or !dc98ca55..." required>
                 </div>
                 <div class="form-group">
                     <label>Vehicle / Device Type</label>
@@ -1575,6 +1854,58 @@
     </div>
 
     <div id="map"></div>
+
+    <!-- Floating History Control & Allocated Dates HUD -->
+    <div id="history-track-banner" class="history-track-banner" style="display: none;">
+        <div class="htb-header">
+            <div class="htb-title-group">
+                <span class="htb-badge"><i class="fa-solid fa-route"></i> HISTORY TRACK</span>
+                <span class="htb-device-name" id="htb-device-name">--</span>
+                <span class="htb-range-tag" id="htb-range-tag">--</span>
+            </div>
+            <div class="htb-actions">
+                <button class="htb-action-btn" id="htb-btn-toggle" onclick="toggleHtbCollapse()" title="Minimize / Expand Banner">
+                    <i class="fa-solid fa-chevron-up" id="htb-toggle-icon"></i>
+                </button>
+                <button class="htb-action-btn htb-close-btn" onclick="clearHistoryTrack()" title="Exit tracking history">
+                    <i class="fa-solid fa-xmark"></i> <span>Exit Track</span>
+                </button>
+            </div>
+        </div>
+        <div class="htb-body" id="htb-body">
+            <div class="htb-dates-section">
+                <div class="htb-dates-label">
+                    <i class="fa-solid fa-calendar-check" style="color: #10b981;"></i>
+                    <span>Allocated Dates Received:</span>
+                </div>
+                <div class="htb-date-chips" id="htb-date-chips">
+                    <!-- Populated dynamically by JS -->
+                </div>
+            </div>
+            <div class="htb-stats-grid">
+                <div class="htb-stat-item">
+                    <span class="htb-stat-label"><i class="fa-solid fa-clock" style="color: #10b981;"></i> First Received</span>
+                    <span class="htb-stat-val" id="htb-first-time">--</span>
+                </div>
+                <div class="htb-stat-item">
+                    <span class="htb-stat-label"><i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Last Received</span>
+                    <span class="htb-stat-val" id="htb-last-time">--</span>
+                </div>
+                <div class="htb-stat-item">
+                    <span class="htb-stat-label"><i class="fa-solid fa-road" style="color: #f59e0b;"></i> Distance</span>
+                    <span class="htb-stat-val" id="htb-distance">0.00 km</span>
+                </div>
+                <div class="htb-stat-item">
+                    <span class="htb-stat-label"><i class="fa-solid fa-gauge-high" style="color: #3b82f6;"></i> Avg Speed</span>
+                    <span class="htb-stat-val" id="htb-speed">0.0 km/h</span>
+                </div>
+            </div>
+            <div class="htb-inactive-note" id="htb-inactive-note" style="display: none;">
+                <i class="fa-solid fa-circle-info" style="color: #f59e0b; flex-shrink: 0;"></i>
+                <span id="htb-inactive-text"></span>
+            </div>
+        </div>
+    </div>
 
     <!-- Device Details Panel -->
     <div class="device-details-panel" id="device-details-panel">
@@ -3100,15 +3431,66 @@
             });
         }
 
-        // Tracking History Logic
-        let currentHistoryPolyline = null;
+        // ========================================================
+        // PROFESSIONAL TRACKING HISTORY SYSTEM
+        // Supports Allocated Dates, Exact Timestamps & Gap-Free Tracks
+        // ========================================================
+        let currentHistoryPolylines = [];
         let historyStartMarker = null;
         let historyEndMarker = null;
+        let historyWaypointMarkers = [];
+        let currentHistoryData = null; // Caches full history data for instant client-side date switching
 
         const historyNavBtn = document.getElementById('nav-history');
         const historyPanel = document.getElementById('history-panel');
         const closeHistoryBtn = document.getElementById('close-history-btn');
         const historyDeviceSelect = document.getElementById('history-device-select');
+
+        // Robust date parser (handles UTC 'Z', SQLite timestamps, and ISO strings)
+        function parseLogDate(dateInput) {
+            if (!dateInput) return null;
+            if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? null : dateInput;
+            let str = String(dateInput).trim();
+            while (str.endsWith('ZZ')) str = str.slice(0, -1);
+            if (!str.endsWith('Z') && !str.includes('+') && !str.match(/-\d{2}:\d{2}$/)) {
+                str = str.replace(' ', 'T') + 'Z';
+            }
+            const d = new Date(str);
+            return isNaN(d.getTime()) ? new Date(dateInput) : d;
+        }
+
+        // Returns local calendar date key 'YYYY-MM-DD'
+        function getLocalDateKey(dateInput) {
+            const d = parseLogDate(dateInput);
+            if (!d || isNaN(d.getTime())) return 'Unknown';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        // Returns friendly local date label (e.g. '21 Oct 2026')
+        function formatLocalDateLabel(dateKey) {
+            if (!dateKey || dateKey === 'Unknown') return 'Unknown Date';
+            const parts = dateKey.split('-');
+            if (parts.length !== 3) return dateKey;
+            const [y, m, d] = parts;
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const month = monthNames[parseInt(m, 10) - 1] || m;
+            return `${parseInt(d, 10)} ${month} ${y}`;
+        }
+
+        // Returns local time only (e.g. '10:01 PM')
+        function formatLocalTimeOnly(dateInput) {
+            const d = parseLogDate(dateInput);
+            if (!d || isNaN(d.getTime())) return '';
+            let hours = d.getHours();
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
 
         if(historyNavBtn) {
             historyNavBtn.addEventListener('click', () => {
@@ -3222,12 +3604,85 @@
 
                 if (!logs || logs.length === 0) {
                     showPremiumToast(`No tracking history found for ${uid} in the selected time range.`, 'warning');
+                    clearHistoryTrack();
                     return;
                 }
 
-                clearHistoryTrack();
+                // Filter valid GPS coordinates (latitude & longitude != 0, within valid coordinate limits)
+                const validLogs = [];
+                logs.forEach((log) => {
+                    const lat = log.latitude !== undefined ? Number(log.latitude) : Number(log.lat);
+                    const lon = log.longitude !== undefined ? Number(log.longitude) : Number(log.lon);
+                    if (!isNaN(lat) && !isNaN(lon) && !(lat === 0 && lon === 0) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                        const parsedDate = parseLogDate(log.timestamp);
+                        validLogs.push({
+                            ...log,
+                            lat,
+                            lon,
+                            timeObj: parsedDate,
+                            dateKey: getLocalDateKey(parsedDate)
+                        });
+                    }
+                });
 
-                // Hide ALL other device markers so ONLY the selected device's history is visible on the map
+                if (validLogs.length === 0) {
+                    showPremiumToast(`No valid GPS coordinates found for ${uid} in this period.`, 'warning');
+                    clearHistoryTrack();
+                    return;
+                }
+
+                // Group validLogs by local calendar date (YYYY-MM-DD)
+                const groupedByDate = {};
+                validLogs.forEach(log => {
+                    const dk = log.dateKey;
+                    if (!groupedByDate[dk]) {
+                        groupedByDate[dk] = {
+                            dateKey: dk,
+                            dateLabel: formatLocalDateLabel(dk),
+                            logs: [],
+                            firstTime: log.timestamp,
+                            lastTime: log.timestamp,
+                            distanceMeters: 0,
+                            speeds: []
+                        };
+                    }
+                    const group = groupedByDate[dk];
+                    group.logs.push(log);
+                    group.lastTime = log.timestamp;
+                    if (log.speed != null && !isNaN(Number(log.speed))) group.speeds.push(Number(log.speed));
+                });
+
+                // Calculate distance for each allocated date
+                Object.values(groupedByDate).forEach(group => {
+                    let d = 0;
+                    for (let i = 1; i < group.logs.length; i++) {
+                        d += getDistanceMeters(group.logs[i-1].lat, group.logs[i-1].lon, group.logs[i].lat, group.logs[i].lon);
+                    }
+                    group.distanceMeters = d;
+                });
+
+                // Calculate calendar days in query range vs active days with recorded data
+                const startDateObj = new Date(startVal);
+                const endDateObj = new Date(endVal);
+                const diffMs = Math.abs(endDateObj.getTime() - startDateObj.getTime());
+                const totalQueryDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                const activeDatesCount = Object.keys(groupedByDate).length;
+                const inactiveDaysCount = Math.max(0, totalQueryDays - activeDatesCount);
+
+                // Cache data globally for instant date filtering without re-querying
+                currentHistoryData = {
+                    uid,
+                    startDateObj,
+                    endDateObj,
+                    totalQueryDays,
+                    activeDatesCount,
+                    inactiveDaysCount,
+                    validLogs,
+                    groupedByDate,
+                    currentDateKey: 'ALL'
+                };
+
+                // Hide ALL other device fleet markers so ONLY selected device's history is shown
                 if (window.deviceMarkers) {
                     Object.keys(window.deviceMarkers).forEach(deviceId => {
                         if (window.deviceMarkers[deviceId] && map.hasLayer(window.deviceMarkers[deviceId])) {
@@ -3235,95 +3690,6 @@
                         }
                     });
                 }
-
-                const validLogs = [];
-                const latLngs = [];
-                let totalDist = 0;
-                let speeds = [];
-
-                logs.forEach((log) => {
-                    const lat = log.latitude !== undefined ? Number(log.latitude) : Number(log.lat);
-                    const lon = log.longitude !== undefined ? Number(log.longitude) : Number(log.lon);
-                    // Filter out invalid/zero coordinates (e.g. GPS No-Fix null/0 values)
-                    if (!isNaN(lat) && !isNaN(lon) && !(lat === 0 && lon === 0) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-                        validLogs.push(log);
-                        latLngs.push([lat, lon]);
-                        if (log.speed != null && !isNaN(Number(log.speed))) speeds.push(Number(log.speed));
-                    }
-                });
-
-                if (latLngs.length === 0) {
-                    showPremiumToast(`No valid GPS coordinates found for ${uid} in this period.`, 'warning');
-                    clearHistoryTrack();
-                    return;
-                }
-
-                for (let i = 1; i < latLngs.length; i++) {
-                    totalDist += getDistanceMeters(latLngs[i-1][0], latLngs[i-1][1], latLngs[i][0], latLngs[i][1]);
-                }
-
-                const startPoint = latLngs[0];
-                const endPoint = latLngs[latLngs.length - 1];
-                const isStationary = totalDist < 5 || (startPoint[0] === endPoint[0] && startPoint[1] === endPoint[1]);
-
-                if (!isStationary) {
-                    // Draw the polyline route
-                    currentHistoryPolyline = L.polyline(latLngs, {
-                        color: '#f59e0b', // Amber for history track
-                        weight: 5,
-                        dashArray: '10, 10',
-                        lineCap: 'round',
-                        lineJoin: 'round'
-                    }).addTo(map);
-
-                    const startIcon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div style="background:#10b981; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(16,185,129,0.8); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-play" style="font-size:8px; color:white; margin-left:1px;"></i></div>`,
-                        iconSize: [26, 26],
-                        iconAnchor: [13, 13]
-                    });
-                    const endIcon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div style="background:#ef4444; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(239,68,68,0.8); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-stop" style="font-size:8px; color:white;"></i></div>`,
-                        iconSize: [26, 26],
-                        iconAnchor: [13, 13]
-                    });
-
-                    historyStartMarker = L.marker(startPoint, { icon: startIcon })
-                        .bindPopup(`<b>${uid} — Start Point</b><br><small style="color:#94a3b8;">${formatDatePremium(validLogs[0].timestamp)}</small><br>Lat: ${startPoint[0].toFixed(5)}, Lon: ${startPoint[1].toFixed(5)}`)
-                        .bindTooltip(`${uid} — Start Point`, { permanent: false, direction: 'top', className: 'professional-tooltip' })
-                        .addTo(map);
-
-                    historyEndMarker = L.marker(endPoint, { icon: endIcon })
-                        .bindPopup(`<b>${uid} — End Point</b><br><small style="color:#94a3b8;">${formatDatePremium(validLogs[validLogs.length - 1].timestamp)}</small><br>Lat: ${endPoint[0].toFixed(5)}, Lon: ${endPoint[1].toFixed(5)}`)
-                        .bindTooltip(`${uid} — End Point`, { permanent: false, direction: 'top', className: 'professional-tooltip' })
-                        .addTo(map);
-
-                    // Fit bounds with maxZoom capped at 17 to prevent extreme level 21 zoom
-                    map.fitBounds(currentHistoryPolyline.getBounds(), { padding: [60, 60], maxZoom: 17 });
-                } else {
-                    // Device remained stationary throughout the period
-                    const stationaryIcon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div style="background:#3b82f6; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(59,130,246,0.9); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-location-dot" style="font-size:10px; color:white;"></i></div>`,
-                        iconSize: [28, 28],
-                        iconAnchor: [14, 14]
-                    });
-
-                    historyStartMarker = L.marker(startPoint, { icon: stationaryIcon })
-                        .bindPopup(`<b>${uid} (Stationary Position)</b><br><small style="color:#94a3b8;">${formatDatePremium(validLogs[0].timestamp)} — ${formatDatePremium(validLogs[validLogs.length - 1].timestamp)}</small><br>Lat: ${startPoint[0].toFixed(5)}, Lon: ${startPoint[1].toFixed(5)}<br>Logged Data Points: ${validLogs.length}`)
-                        .bindTooltip(`${uid} — Stationary Location`, { permanent: true, direction: 'top', className: 'professional-tooltip' })
-                        .addTo(map);
-
-                    map.setView(startPoint, 16);
-                }
-
-                // Update Stats
-                document.getElementById('hist-points').textContent = validLogs.length;
-                document.getElementById('hist-distance').textContent = (totalDist / 1000).toFixed(2) + ' km';
-                const avgSpeed = speeds.length > 0 ? (speeds.reduce((a,b)=>a+b,0) / speeds.length) : 0;
-                document.getElementById('hist-speed').textContent = avgSpeed.toFixed(1) + ' km/h';
-                document.getElementById('history-stats').style.display = 'block';
 
                 // Automatically dismiss history panel so user immediately sees the track on the map
                 const hPanel = document.getElementById('history-panel');
@@ -3333,23 +3699,376 @@
                 const navMap = document.getElementById('nav-map');
                 if (navMap) navMap.classList.add('active');
 
-                const statusMsg = isStationary ? `Stationary location loaded (${validLogs.length} logs)` : `Loaded ${validLogs.length} tracking points (${(totalDist / 1000).toFixed(2)} km)`;
-                showPremiumToast(`${uid}: ${statusMsg}`, 'success');
+                // Build date filter chips and render the tracking view
+                buildHistoryDateChips();
+                renderHistoryTrackForDate('ALL');
+
+                // Populate detailed date breakdown inside #history-stats side panel
+                populateHistoryPanelStats();
+
+                showPremiumToast(`${uid}: Loaded ${validLogs.length} points across ${activeDatesCount} active date(s).`, 'success');
 
             } catch(e) {
                 console.error(e);
-                showPremiumToast('Error loading history.', 'error');
+                showPremiumToast('Error loading tracking history.', 'error');
+            }
+        }
+
+        function buildHistoryDateChips() {
+            const container = document.getElementById('htb-date-chips');
+            if (!container || !currentHistoryData) return;
+            container.innerHTML = '';
+
+            const { validLogs, groupedByDate, currentDateKey } = currentHistoryData;
+            const dateKeys = Object.keys(groupedByDate).sort().reverse(); // Newest first
+
+            // 1. "All Active Dates" chip
+            const allChip = document.createElement('div');
+            allChip.className = `htb-chip ${currentDateKey === 'ALL' ? 'active' : ''}`;
+            allChip.innerHTML = `<i class="fa-solid fa-layer-group"></i> All Active Dates <span class="chip-count">${validLogs.length}</span>`;
+            allChip.onclick = () => renderHistoryTrackForDate('ALL');
+            container.appendChild(allChip);
+
+            // 2. Individual Active Date chips with allocated timestamps
+            dateKeys.forEach(dk => {
+                const group = groupedByDate[dk];
+                const firstTime = formatLocalTimeOnly(group.firstTime);
+                const lastTime = formatLocalTimeOnly(group.lastTime);
+                const timeSpanStr = (firstTime && lastTime && firstTime !== lastTime) ? `${firstTime} - ${lastTime}` : firstTime;
+
+                const chip = document.createElement('div');
+                chip.className = `htb-chip ${currentDateKey === dk ? 'active' : ''}`;
+                chip.innerHTML = `<i class="fa-solid fa-calendar-day"></i> <strong>${group.dateLabel}</strong> <span class="chip-count">${group.logs.length}</span> <small style="opacity:0.85; font-size:0.72rem;">${timeSpanStr}</small>`;
+                chip.onclick = () => renderHistoryTrackForDate(dk);
+                container.appendChild(chip);
+            });
+        }
+
+        function renderHistoryTrackForDate(targetDateKey) {
+            if (!currentHistoryData) return;
+            currentHistoryData.currentDateKey = targetDateKey;
+
+            // Clear previous polylines, start/end markers, and waypoints
+            if (currentHistoryPolylines && currentHistoryPolylines.length > 0) {
+                currentHistoryPolylines.forEach(p => map.removeLayer(p));
+            }
+            currentHistoryPolylines = [];
+            if (historyStartMarker) map.removeLayer(historyStartMarker);
+            if (historyEndMarker) map.removeLayer(historyEndMarker);
+            if (historyWaypointMarkers && historyWaypointMarkers.length > 0) {
+                historyWaypointMarkers.forEach(m => map.removeLayer(m));
+            }
+            historyWaypointMarkers = [];
+            historyStartMarker = null;
+            historyEndMarker = null;
+
+            const { uid, validLogs, groupedByDate, totalQueryDays, activeDatesCount, inactiveDaysCount } = currentHistoryData;
+
+            let logsToDraw = [];
+            let isSingleDate = false;
+
+            if (targetDateKey === 'ALL') {
+                logsToDraw = validLogs;
+            } else if (groupedByDate[targetDateKey]) {
+                logsToDraw = groupedByDate[targetDateKey].logs;
+                isSingleDate = true;
+            }
+
+            if (logsToDraw.length === 0) return;
+
+            // Calculate distance & speeds for the selected track
+            let totalDist = 0;
+            const speeds = [];
+            for (let i = 1; i < logsToDraw.length; i++) {
+                totalDist += getDistanceMeters(logsToDraw[i-1].lat, logsToDraw[i-1].lon, logsToDraw[i].lat, logsToDraw[i].lon);
+                if (logsToDraw[i].speed != null && !isNaN(Number(logsToDraw[i].speed))) {
+                    speeds.push(Number(logsToDraw[i].speed));
+                }
+            }
+            const avgSpeed = speeds.length > 0 ? (speeds.reduce((a,b)=>a+b,0) / speeds.length) : 0;
+
+            const firstLog = logsToDraw[0];
+            const lastLog = logsToDraw[logsToDraw.length - 1];
+            const firstTimeFormatted = formatDatePremium(firstLog.timestamp);
+            const lastTimeFormatted = formatDatePremium(lastLog.timestamp);
+
+            const isStationary = totalDist < 5 || (logsToDraw.length > 1 && logsToDraw.every(p => p.lat === firstLog.lat && p.lon === firstLog.lon));
+
+            // CRITICAL GAP FIX: Segment polyline paths whenever time gap > 2 hours or date changes
+            // This guarantees NO artificial line is drawn across inactive dates or multi-hour missing data periods
+            const segments = [];
+            let currentSegment = [];
+
+            for (let i = 0; i < logsToDraw.length; i++) {
+                const pt = logsToDraw[i];
+                if (currentSegment.length > 0) {
+                    const prevPt = currentSegment[currentSegment.length - 1];
+                    const prevTime = prevPt.timeObj.getTime();
+                    const currTime = pt.timeObj.getTime();
+                    const diffHours = (currTime - prevTime) / (1000 * 60 * 60);
+
+                    // If gap > 2 hours or local date changed, break into a new tracking session
+                    if (diffHours > 2 || pt.dateKey !== prevPt.dateKey) {
+                        segments.push(currentSegment);
+                        currentSegment = [];
+                    }
+                }
+                currentSegment.push(pt);
+            }
+            if (currentSegment.length > 0) segments.push(currentSegment);
+
+            // Draw polyline segments
+            if (!isStationary) {
+                segments.forEach(seg => {
+                    if (seg.length > 1) {
+                        const poly = L.polyline(seg.map(p => [p.lat, p.lon]), {
+                            color: '#f59e0b',
+                            weight: 5,
+                            dashArray: '8, 8',
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }).addTo(map);
+                        currentHistoryPolylines.push(poly);
+                    }
+                });
+
+                // Start Marker (Green Play Icon) with exact allocated timestamp
+                const startIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background:#10b981; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(16,185,129,0.9); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-play" style="font-size:9px; color:white; margin-left:1px;"></i></div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+                historyStartMarker = L.marker([firstLog.lat, firstLog.lon], { icon: startIcon })
+                    .bindPopup(`
+                        <div style="font-size:13px; line-height:1.5; min-width:210px;">
+                            <div style="font-weight:700; color:#10b981; font-size:14px; margin-bottom:4px;"><i class="fa-solid fa-play"></i> Start Point — ${uid}</div>
+                            <div style="color:#e2e8f0;"><b>Allocated Time:</b> ${firstTimeFormatted}</div>
+                            <div style="color:#94a3b8; font-size:12px;"><b>Coordinates:</b> ${firstLog.lat.toFixed(5)}, ${firstLog.lon.toFixed(5)}</div>
+                            <div style="color:#94a3b8; font-size:12px;"><b>Speed:</b> ${firstLog.speed || 0} km/h • <b>Battery:</b> ${firstLog.battery_percentage != null ? firstLog.battery_percentage + '%' : 'N/A'}</div>
+                        </div>
+                    `)
+                    .bindTooltip(`Start: ${firstTimeFormatted}`, { permanent: false, direction: 'top', className: 'professional-tooltip' })
+                    .addTo(map);
+
+                // End Marker (Red Stop Icon) with exact allocated timestamp
+                const endIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background:#ef4444; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(239,68,68,0.9); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-stop" style="font-size:9px; color:white;"></i></div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+                historyEndMarker = L.marker([lastLog.lat, lastLog.lon], { icon: endIcon })
+                    .bindPopup(`
+                        <div style="font-size:13px; line-height:1.5; min-width:210px;">
+                            <div style="font-weight:700; color:#ef4444; font-size:14px; margin-bottom:4px;"><i class="fa-solid fa-stop"></i> End Point — ${uid}</div>
+                            <div style="color:#e2e8f0;"><b>Allocated Time:</b> ${lastTimeFormatted}</div>
+                            <div style="color:#94a3b8; font-size:12px;"><b>Coordinates:</b> ${lastLog.lat.toFixed(5)}, ${lastLog.lon.toFixed(5)}</div>
+                            <div style="color:#94a3b8; font-size:12px;"><b>Speed:</b> ${lastLog.speed || 0} km/h • <b>Battery:</b> ${lastLog.battery_percentage != null ? lastLog.battery_percentage + '%' : 'N/A'}</div>
+                        </div>
+                    `)
+                    .bindTooltip(`End: ${lastTimeFormatted}`, { permanent: false, direction: 'top', className: 'professional-tooltip' })
+                    .addTo(map);
+
+                // Add Waypoint markers along the route (sampled if large count)
+                const step = logsToDraw.length > 150 ? Math.ceil(logsToDraw.length / 60) : 1;
+                for (let i = 1; i < logsToDraw.length - 1; i += step) {
+                    const wp = logsToDraw[i];
+                    const wpMarker = L.circleMarker([wp.lat, wp.lon], {
+                        radius: 4,
+                        color: '#f59e0b',
+                        fillColor: '#fbbf24',
+                        fillOpacity: 0.85,
+                        weight: 1.5
+                    }).bindPopup(`
+                        <div style="font-size:12px; line-height:1.4;">
+                            <b style="color:#f59e0b;">Recorded Waypoint #${i + 1}</b><br>
+                            <b>Allocated Timestamp:</b> ${formatDatePremium(wp.timestamp)}<br>
+                            <b>Speed:</b> ${wp.speed || 0} km/h<br>
+                            <b>Battery:</b> ${wp.battery_percentage != null ? wp.battery_percentage + '%' : 'N/A'}<br>
+                            <span style="color:#94a3b8; font-size:11px;">${wp.lat.toFixed(5)}, ${wp.lon.toFixed(5)}</span>
+                        </div>
+                    `);
+                    wpMarker.addTo(map);
+                    historyWaypointMarkers.push(wpMarker);
+                }
+
+                // Fit map bounds cleanly with maxZoom capped at 17 to prevent extreme zoom
+                const allPoints = logsToDraw.map(p => [p.lat, p.lon]);
+                const bounds = L.latLngBounds(allPoints);
+                map.fitBounds(bounds, { padding: [70, 70], maxZoom: 17 });
+
+            } else {
+                // Stationary location marker
+                const stationaryIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background:#3b82f6; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow:0 0 14px rgba(59,130,246,0.9); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-location-dot" style="font-size:11px; color:white;"></i></div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                historyStartMarker = L.marker([firstLog.lat, firstLog.lon], { icon: stationaryIcon })
+                    .bindPopup(`
+                        <div style="font-size:13px; line-height:1.5; min-width:230px;">
+                            <div style="font-weight:700; color:#3b82f6; font-size:14px; margin-bottom:4px;"><i class="fa-solid fa-location-dot"></i> Stationary Location — ${uid}</div>
+                            <div style="color:#e2e8f0;"><b>Active Period:</b> ${firstTimeFormatted} — ${lastTimeFormatted}</div>
+                            <div style="color:#e2e8f0;"><b>Logged Transmissions:</b> ${logsToDraw.length} points</div>
+                            <div style="color:#94a3b8; font-size:12px;"><b>Coordinates:</b> ${firstLog.lat.toFixed(5)}, ${firstLog.lon.toFixed(5)}</div>
+                            <div style="color:#38bdf8; font-size:11px; margin-top:4px;"><i class="fa-solid fa-circle-check"></i> Device remained stationary at this exact position</div>
+                        </div>
+                    `)
+                    .bindTooltip(`${uid} — Stationary Location (${logsToDraw.length} logs)`, { permanent: true, direction: 'top', className: 'professional-tooltip' })
+                    .addTo(map);
+
+                map.setView([firstLog.lat, firstLog.lon], 16);
+            }
+
+            // Update Floating Banner HUD
+            const banner = document.getElementById('history-track-banner');
+            if (banner) {
+                banner.style.display = 'flex';
+                document.getElementById('htb-device-name').textContent = uid;
+                
+                const rangeLabel = isSingleDate ? formatLocalDateLabel(targetDateKey) : (totalQueryDays > 1 ? `${totalQueryDays}-Day Query` : 'Today');
+                document.getElementById('htb-range-tag').textContent = rangeLabel;
+                
+                document.getElementById('htb-first-time').textContent = firstTimeFormatted;
+                document.getElementById('htb-last-time').textContent = lastTimeFormatted;
+                document.getElementById('htb-distance').textContent = (totalDist / 1000).toFixed(2) + ' km';
+                document.getElementById('htb-speed').textContent = avgSpeed.toFixed(1) + ' km/h';
+
+                // Inactive dates / filter status note
+                const noteEl = document.getElementById('htb-inactive-note');
+                const textEl = document.getElementById('htb-inactive-text');
+                if (noteEl && textEl) {
+                    noteEl.style.display = 'flex';
+                    if (isSingleDate) {
+                        textEl.innerHTML = `Displaying strictly <b>${formatLocalDateLabel(targetDateKey)}</b> (${logsToDraw.length} points • ${firstTimeFormatted.split(',')[1]} to ${lastTimeFormatted.split(',')[1]}). Zero data from other dates displayed.`;
+                    } else {
+                        if (inactiveDaysCount > 0) {
+                            textEl.innerHTML = `<b>${activeDatesCount} active dates</b> with recorded data • <b>${inactiveDaysCount} inactive days</b> (zero false lines or interpolations drawn across inactive days).`;
+                        } else {
+                            textEl.innerHTML = `All ${activeDatesCount} dates in the selected range have active recorded transmissions.`;
+                        }
+                    }
+                }
+            }
+
+            // Update active state of date chips
+            document.querySelectorAll('#htb-date-chips .htb-chip').forEach(chip => {
+                chip.classList.remove('active');
+            });
+            const activeChip = Array.from(document.querySelectorAll('#htb-date-chips .htb-chip')).find(c => {
+                if (targetDateKey === 'ALL') return c.textContent.includes('All Active Dates');
+                return c.textContent.includes(formatLocalDateLabel(targetDateKey));
+            });
+            if (activeChip) activeChip.classList.add('active');
+        }
+
+        function populateHistoryPanelStats() {
+            if (!currentHistoryData) return;
+            const { uid, validLogs, groupedByDate, totalQueryDays, activeDatesCount, inactiveDaysCount } = currentHistoryData;
+
+            let totalDist = 0;
+            const speeds = [];
+            for (let i = 1; i < validLogs.length; i++) {
+                totalDist += getDistanceMeters(validLogs[i-1].lat, validLogs[i-1].lon, validLogs[i].lat, validLogs[i].lon);
+                if (validLogs[i].speed != null && !isNaN(Number(validLogs[i].speed))) {
+                    speeds.push(Number(validLogs[i].speed));
+                }
+            }
+            const avgSpeed = speeds.length > 0 ? (speeds.reduce((a,b)=>a+b,0) / speeds.length) : 0;
+
+            document.getElementById('hist-points').textContent = validLogs.length;
+            document.getElementById('hist-distance').textContent = (totalDist / 1000).toFixed(2) + ' km';
+            document.getElementById('hist-speed').textContent = avgSpeed.toFixed(1) + ' km/h';
+
+            // Additional allocated dates container inside #history-stats
+            let breakdownContainer = document.getElementById('hist-dates-breakdown');
+            if (!breakdownContainer) {
+                breakdownContainer = document.createElement('div');
+                breakdownContainer.id = 'hist-dates-breakdown';
+                breakdownContainer.style.marginTop = '15px';
+                document.getElementById('history-stats').appendChild(breakdownContainer);
+            }
+
+            const dateKeys = Object.keys(groupedByDate).sort().reverse();
+            let breakdownHtml = `
+                <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 12px;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: #fbbf24; margin-bottom: 8px; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-calendar-check"></i> Allocated Transmission Dates (${activeDatesCount})
+                    </div>
+            `;
+
+            dateKeys.forEach(dk => {
+                const grp = groupedByDate[dk];
+                const firstTime = formatDatePremium(grp.firstTime);
+                const lastTime = formatDatePremium(grp.lastTime);
+                breakdownHtml += `
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.82rem;">
+                        <div style="display:flex; justify-content:space-between; font-weight:600; color:#f8fafc; margin-bottom: 2px;">
+                            <span>${grp.dateLabel}</span>
+                            <span style="color:#10b981;">${grp.logs.length} logs</span>
+                        </div>
+                        <div style="color:#94a3b8; font-size: 0.75rem;">
+                            <span>Start: ${firstTime.split(',')[1]}</span> • 
+                            <span>End: ${lastTime.split(',')[1]}</span>
+                        </div>
+                        <div style="color:#94a3b8; font-size: 0.75rem; margin-top: 2px;">
+                            <span>Distance: ${(grp.distanceMeters / 1000).toFixed(2)} km</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (inactiveDaysCount > 0) {
+                breakdownHtml += `
+                    <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 8px 10px; color: #fca5a5; font-size: 0.78rem; margin-top: 8px; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>${inactiveDaysCount} days in selected range had NO data received. Zero unwanted data shown.</span>
+                    </div>
+                `;
+            }
+
+            breakdownHtml += `</div>`;
+            breakdownContainer.innerHTML = breakdownHtml;
+            document.getElementById('history-stats').style.display = 'block';
+        }
+
+        function toggleHtbCollapse() {
+            const body = document.getElementById('htb-body');
+            const icon = document.getElementById('htb-toggle-icon');
+            if (!body || !icon) return;
+            if (body.style.display === 'none') {
+                body.style.display = 'flex';
+                icon.className = 'fa-solid fa-chevron-up';
+            } else {
+                body.style.display = 'none';
+                icon.className = 'fa-solid fa-chevron-down';
             }
         }
 
         function clearHistoryTrack() {
-            if (currentHistoryPolyline) map.removeLayer(currentHistoryPolyline);
+            if (currentHistoryPolylines && currentHistoryPolylines.length > 0) {
+                currentHistoryPolylines.forEach(p => map.removeLayer(p));
+            }
+            currentHistoryPolylines = [];
+
             if (historyStartMarker) map.removeLayer(historyStartMarker);
             if (historyEndMarker) map.removeLayer(historyEndMarker);
-            currentHistoryPolyline = null;
             historyStartMarker = null;
             historyEndMarker = null;
-            document.getElementById('history-stats').style.display = 'none';
+
+            if (historyWaypointMarkers && historyWaypointMarkers.length > 0) {
+                historyWaypointMarkers.forEach(m => map.removeLayer(m));
+            }
+            historyWaypointMarkers = [];
+            currentHistoryData = null;
+
+            const banner = document.getElementById('history-track-banner');
+            if (banner) banner.style.display = 'none';
+
+            const hStats = document.getElementById('history-stats');
+            if (hStats) hStats.style.display = 'none';
 
             // Restore all device fleet markers on the map
             if (window.deviceMarkers) {
