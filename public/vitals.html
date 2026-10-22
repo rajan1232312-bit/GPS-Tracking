@@ -238,8 +238,8 @@
         /* 4-Card Hero Vitals KPI Grid */
         .vitals-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 18px;
             margin-bottom: 28px;
         }
 
@@ -247,7 +247,7 @@
             background: var(--surface-color);
             border: 1px solid var(--border-color);
             border-radius: 14px;
-            padding: 22px;
+            padding: 20px 18px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -264,7 +264,7 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 16px;
         }
 
@@ -273,6 +273,7 @@
             align-items: center;
             gap: 10px;
             min-width: 0;
+            flex: 1 1 auto;
         }
 
         .icon-circle {
@@ -293,15 +294,18 @@
 
         .card-titles {
             min-width: 0;
+            flex: 1 1 auto;
         }
 
         .card-name {
             font-size: 0.95rem;
             font-weight: 600;
             color: var(--text-main);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            word-break: normal;
+            line-height: 1.25;
         }
 
         .card-subtitle {
@@ -313,16 +317,17 @@
 
         /* Status Badge - Compact & Clean */
         .status-pill {
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 500;
-            padding: 3px 8px;
+            padding: 2px 7px;
             border-radius: 6px;
             white-space: nowrap;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
             flex-shrink: 0;
-            margin-left: auto;
+            margin-left: 6px;
+            margin-top: 1px;
         }
 
         .status-pill .dot {
