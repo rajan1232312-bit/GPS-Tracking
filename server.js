@@ -540,7 +540,7 @@ app.get('/api/devices/:uid/logs', (req, res) => {
 // Chronological history with date filters
 app.get('/api/devices/:uid/history', (req, res) => {
     const { uid } = req.params; const { start, end } = req.query;
-    let query = `SELECT * FROM telemetry_logs WHERE device_uid = ?`;
+    let query = `SELECT * FROM telemetry_logs WHERE device_uid = ? AND (latitude != 0 OR longitude != 0) AND latitude IS NOT NULL AND longitude IS NOT NULL`;
     let params = [uid];
     if (start) { query += ` AND timestamp >= ?`; params.push(start); }
     if (end)   { query += ` AND timestamp <= ?`; params.push(end); }

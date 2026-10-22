@@ -2906,7 +2906,12 @@
             }
         });
 
+        let activeDeviceUid = null;
+
         async function openDeviceDetails(uid) {
+            activeDeviceUid = uid;
+            const hSelect = document.getElementById('history-device-select');
+            if (hSelect && uid) hSelect.value = uid;
             try {
                 // Auto-close sidebar on mobile/tablet so the camera flies to the pointer and it's 100% visible
                 if (window.innerWidth <= 1024 && sidebarEl) {
@@ -3117,6 +3122,7 @@
                 
                 historyPanel.classList.add('active');
                 
+                const currentVal = historyDeviceSelect.value || activeDeviceUid;
                 // Populate the dropdown with devices
                 historyDeviceSelect.innerHTML = '<option value="">-- Choose a Device --</option>';
                 fetch('/api/devices')
@@ -3125,9 +3131,11 @@
                         devices.forEach(d => {
                             const opt = document.createElement('option');
                             opt.value = d.device_uid;
-                            opt.textContent = d.device_uid;
+                            opt.textContent = `${d.device_uid} (${d.name || d.device_uid})`;
+                            if (currentVal && d.device_uid === currentVal) opt.selected = true;
                             historyDeviceSelect.appendChild(opt);
                         });
+                        if (currentVal) historyDeviceSelect.value = currentVal;
                     });
             });
         }
@@ -3205,67 +3213,113 @@
             if (!startVal || !endVal) return showPremiumToast('Please select a date range.', 'warning');
 
             // Convert local time back to UTC strings for DB query
-            // SQLite expects YYYY-MM-DD HH:MM:SS format in UTC
             const startStr = new Date(startVal).toISOString().replace('T', ' ').substring(0, 19);
             const endStr = new Date(endVal).toISOString().replace('T', ' ').substring(0, 19);
 
             try {
-                const res = await fetch(`/api/devices/${uid}/history?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`);
+                const res = await fetch(`/api/devices/${encodeURIComponent(uid)}/history?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`);
                 const logs = await res.json();
 
-                if (logs.length === 0) {
-                    showPremiumToast('No tracking history found for this device in the selected time range.', 'warning');
+                if (!logs || logs.length === 0) {
+                    showPremiumToast(`No tracking history found for ${uid} in the selected time range.`, 'warning');
                     return;
                 }
 
                 clearHistoryTrack();
 
+                // Hide ALL other device markers so ONLY the selected device's history is visible on the map
+                if (window.deviceMarkers) {
+                    Object.keys(window.deviceMarkers).forEach(deviceId => {
+                        if (window.deviceMarkers[deviceId] && map.hasLayer(window.deviceMarkers[deviceId])) {
+                            map.removeLayer(window.deviceMarkers[deviceId]);
+                        }
+                    });
+                }
+
+                const validLogs = [];
                 const latLngs = [];
                 let totalDist = 0;
                 let speeds = [];
 
-                logs.forEach((log, index) => {
-                    const lat = log.latitude !== undefined ? log.latitude : log.lat;
-                    const lon = log.longitude !== undefined ? log.longitude : log.lon;
-                    if (lat != null && lon != null) {
+                logs.forEach((log) => {
+                    const lat = log.latitude !== undefined ? Number(log.latitude) : Number(log.lat);
+                    const lon = log.longitude !== undefined ? Number(log.longitude) : Number(log.lon);
+                    // Filter out invalid/zero coordinates (e.g. GPS No-Fix null/0 values)
+                    if (!isNaN(lat) && !isNaN(lon) && !(lat === 0 && lon === 0) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                        validLogs.push(log);
                         latLngs.push([lat, lon]);
-                        if(log.speed != null) speeds.push(log.speed);
-                        
-                        if (index > 0) {
-                            const prev = logs[index-1];
-                            const pLat = prev.latitude !== undefined ? prev.latitude : prev.lat;
-                            const pLon = prev.longitude !== undefined ? prev.longitude : prev.lon;
-                            totalDist += getDistanceMeters(pLat, pLon, lat, lon);
-                        }
+                        if (log.speed != null && !isNaN(Number(log.speed))) speeds.push(Number(log.speed));
                     }
                 });
 
-                if(latLngs.length === 0) return;
+                if (latLngs.length === 0) {
+                    showPremiumToast(`No valid GPS coordinates found for ${uid} in this period.`, 'warning');
+                    clearHistoryTrack();
+                    return;
+                }
 
-                // Draw the polyline
-                currentHistoryPolyline = L.polyline(latLngs, {
-                    color: '#f59e0b', // Amber for history track
-                    weight: 5,
-                    dashArray: '10, 10',
-                    lineCap: 'round',
-                    lineJoin: 'round'
-                }).addTo(map);
+                for (let i = 1; i < latLngs.length; i++) {
+                    totalDist += getDistanceMeters(latLngs[i-1][0], latLngs[i-1][1], latLngs[i][0], latLngs[i][1]);
+                }
 
-                // Add Start/End Markers
                 const startPoint = latLngs[0];
                 const endPoint = latLngs[latLngs.length - 1];
+                const isStationary = totalDist < 5 || (startPoint[0] === endPoint[0] && startPoint[1] === endPoint[1]);
 
-                const startIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background:#10b981; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>`, iconSize: [22,22], iconAnchor: [11,11] });
-                const endIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background:#ef4444; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>`, iconSize: [22,22], iconAnchor: [11,11] });
+                if (!isStationary) {
+                    // Draw the polyline route
+                    currentHistoryPolyline = L.polyline(latLngs, {
+                        color: '#f59e0b', // Amber for history track
+                        weight: 5,
+                        dashArray: '10, 10',
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }).addTo(map);
 
-                historyStartMarker = L.marker(startPoint, {icon: startIcon}).bindPopup('<b>Start Point</b>').addTo(map);
-                historyEndMarker = L.marker(endPoint, {icon: endIcon}).bindPopup('<b>End Point</b>').addTo(map);
+                    const startIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background:#10b981; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(16,185,129,0.8); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-play" style="font-size:8px; color:white; margin-left:1px;"></i></div>`,
+                        iconSize: [26, 26],
+                        iconAnchor: [13, 13]
+                    });
+                    const endIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background:#ef4444; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(239,68,68,0.8); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-stop" style="font-size:8px; color:white;"></i></div>`,
+                        iconSize: [26, 26],
+                        iconAnchor: [13, 13]
+                    });
 
-                // Auto zoom to fit the route
-                map.fitBounds(currentHistoryPolyline.getBounds(), { padding: [50, 50] });
+                    historyStartMarker = L.marker(startPoint, { icon: startIcon })
+                        .bindPopup(`<b>${uid} — Start Point</b><br><small style="color:#94a3b8;">${formatDatePremium(validLogs[0].timestamp)}</small><br>Lat: ${startPoint[0].toFixed(5)}, Lon: ${startPoint[1].toFixed(5)}`)
+                        .bindTooltip(`${uid} — Start Point`, { permanent: false, direction: 'top', className: 'professional-tooltip' })
+                        .addTo(map);
+
+                    historyEndMarker = L.marker(endPoint, { icon: endIcon })
+                        .bindPopup(`<b>${uid} — End Point</b><br><small style="color:#94a3b8;">${formatDatePremium(validLogs[validLogs.length - 1].timestamp)}</small><br>Lat: ${endPoint[0].toFixed(5)}, Lon: ${endPoint[1].toFixed(5)}`)
+                        .bindTooltip(`${uid} — End Point`, { permanent: false, direction: 'top', className: 'professional-tooltip' })
+                        .addTo(map);
+
+                    // Fit bounds with maxZoom capped at 17 to prevent extreme level 21 zoom
+                    map.fitBounds(currentHistoryPolyline.getBounds(), { padding: [60, 60], maxZoom: 17 });
+                } else {
+                    // Device remained stationary throughout the period
+                    const stationaryIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background:#3b82f6; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(59,130,246,0.9); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-location-dot" style="font-size:10px; color:white;"></i></div>`,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+
+                    historyStartMarker = L.marker(startPoint, { icon: stationaryIcon })
+                        .bindPopup(`<b>${uid} (Stationary Position)</b><br><small style="color:#94a3b8;">${formatDatePremium(validLogs[0].timestamp)} — ${formatDatePremium(validLogs[validLogs.length - 1].timestamp)}</small><br>Lat: ${startPoint[0].toFixed(5)}, Lon: ${startPoint[1].toFixed(5)}<br>Logged Data Points: ${validLogs.length}`)
+                        .bindTooltip(`${uid} — Stationary Location`, { permanent: true, direction: 'top', className: 'professional-tooltip' })
+                        .addTo(map);
+
+                    map.setView(startPoint, 16);
+                }
 
                 // Update Stats
-                document.getElementById('hist-points').textContent = logs.length;
+                document.getElementById('hist-points').textContent = validLogs.length;
                 document.getElementById('hist-distance').textContent = (totalDist / 1000).toFixed(2) + ' km';
                 const avgSpeed = speeds.length > 0 ? (speeds.reduce((a,b)=>a+b,0) / speeds.length) : 0;
                 document.getElementById('hist-speed').textContent = avgSpeed.toFixed(1) + ' km/h';
@@ -3279,7 +3333,8 @@
                 const navMap = document.getElementById('nav-map');
                 if (navMap) navMap.classList.add('active');
 
-                showPremiumToast(`Loaded ${logs.length} tracking points`, 'success');
+                const statusMsg = isStationary ? `Stationary location loaded (${validLogs.length} logs)` : `Loaded ${validLogs.length} tracking points (${(totalDist / 1000).toFixed(2)} km)`;
+                showPremiumToast(`${uid}: ${statusMsg}`, 'success');
 
             } catch(e) {
                 console.error(e);
@@ -3295,6 +3350,15 @@
             historyStartMarker = null;
             historyEndMarker = null;
             document.getElementById('history-stats').style.display = 'none';
+
+            // Restore all device fleet markers on the map
+            if (window.deviceMarkers) {
+                Object.values(window.deviceMarkers).forEach(marker => {
+                    if (marker && !map.hasLayer(marker)) {
+                        marker.addTo(map);
+                    }
+                });
+            }
         }
 
         // ========================================================
