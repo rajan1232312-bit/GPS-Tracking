@@ -320,6 +320,37 @@ const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
+app.disable('x-powered-by');
+
+// --- Security & Transport Encryption Middleware (OWASP CSP & HSTS) ---
+// Explicitly defines directives that have no fallback (base-uri, form-action, frame-ancestors, object-src),
+// prevents "Content Security Policy (CSP) Header Not Set" across all routes,
+// and enforces SSL/TLS transport encryption (HSTS + upgrade-insecure-requests).
+const CSP_POLICY = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+    "object-src 'none'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
+    "img-src 'self' data: blob: https://*.google.com https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr https://server.arcgisonline.com https://troopcomfortslimited.co.in",
+    "connect-src 'self' ws: wss: https://nominatim.openstreetmap.org",
+    "upgrade-insecure-requests"
+].join('; ');
+
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', CSP_POLICY);
+    res.setHeader('X-Content-Security-Policy', CSP_POLICY);
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(), camera=()');
+    next();
+});
+
 app.use(express.static('public'));
 app.use(express.json({ limit: '10mb' }));
 
@@ -639,6 +670,17 @@ app.get('/api/devices/:uid/vitals', (req, res) => {
 });
 
 app.get('/api/status', (req, res) => res.send('GPS Backend Server is running.'));
+
+// 404 handler — preserves complete CSP directives & security headers across all unmapped routes
+app.use((req, res) => {
+    res.status(404).send('Not Found');
+});
+
+// Centralized error handler — ensures CSP and security headers remain present even on 500 exceptions
+app.use((err, req, res, next) => {
+    console.error('Unhandled Server Error:', err);
+    res.status(500).send('Internal Server Error');
+});
 
 io.on('connection', (socket) => {
     console.log('Frontend WebSocket client connected:', socket.id);

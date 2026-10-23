@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /api/
+Allow: /
+Allow: /dashboard.html
+Allow: /logs.html
+Allow: /register.html
+Allow: /vitals.html
+
+Sitemap: https://gps-tracking-1-1gkx.onrender.com/sitemap.xml
