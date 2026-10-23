@@ -318,7 +318,34 @@ tcpServer.listen(TCP_PORT, () => console.log(`TCP Listener Server running on por
 const HTTP_PORT = process.env.PORT || process.env.HTTP_PORT || 5001;
 const app = express();
 const httpServer = http.createServer(app);
-const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
+// Validate origin against allowed hosts (prevents ZAP "Cross-Domain Misconfiguration" Alert 10098)
+function isOriginAllowed(origin) {
+    if (!origin) return true; // Direct hardware/microcontroller requests, curl, mobile apps
+    try {
+        const parsed = new URL(origin);
+        if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+        if (parsed.hostname.endsWith('.onrender.com') || parsed.hostname === 'onrender.com') return true;
+        if (process.env.ALLOWED_ORIGINS) {
+            const list = process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim().toLowerCase());
+            if (list.includes(origin.toLowerCase()) || list.includes(parsed.hostname.toLowerCase())) return true;
+        }
+    } catch {
+        return false;
+    }
+    return false;
+}
+
+const io = new Server(httpServer, {
+    cors: {
+        origin: (origin, callback) => {
+            if (isOriginAllowed(origin)) {
+                return callback(null, origin || true);
+            }
+            return callback(null, false);
+        },
+        methods: ["GET", "POST"]
+    }
+});
 
 app.disable('x-powered-by');
 
