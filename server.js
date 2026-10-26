@@ -379,7 +379,6 @@ const CSP_POLICY = [
 
 app.use((req, res, next) => {
     res.setHeader('Content-Security-Policy', CSP_POLICY);
-    res.setHeader('X-Content-Security-Policy', CSP_POLICY);
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
