@@ -388,6 +388,17 @@ app.use((req, res, next) => {
     next();
 });
 
+// Global Security Response Interceptor (guarantees Socket.IO internal endpoints like /socket.io/socket.io.js get all OWASP security headers)
+const origWriteHead = http.ServerResponse.prototype.writeHead;
+http.ServerResponse.prototype.writeHead = function(statusCode, ...args) {
+    if (!this.getHeader('X-Content-Type-Options')) this.setHeader('X-Content-Type-Options', 'nosniff');
+    if (!this.getHeader('Strict-Transport-Security')) this.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    if (!this.getHeader('X-Frame-Options')) this.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    if (!this.getHeader('Referrer-Policy')) this.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (!this.getHeader('Content-Security-Policy')) this.setHeader('Content-Security-Policy', CSP_POLICY);
+    return origWriteHead.apply(this, [statusCode, ...args]);
+};
+
 app.use(express.static('public'));
 app.use(express.json({ limit: '10mb' }));
 
