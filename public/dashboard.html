@@ -214,9 +214,9 @@
                 <div style="margin-bottom: 20px;">
                     <label style="display:block; margin-bottom: 8px; color:#cbd5e1; font-size: 1rem; font-weight: 500;">Quick Select</label>
                     <div style="display: flex; gap: 10px;">
-                        <button class="submit-btn" style="padding: 10px; font-size: 13px; margin-top:0;" onclick="setHistoryRange('today')">Today</button>
-                        <button class="submit-btn" style="padding: 10px; font-size: 13px; margin-top:0;" onclick="setHistoryRange('week')">7 Days</button>
-                        <button class="submit-btn" style="padding: 10px; font-size: 13px; margin-top:0;" onclick="setHistoryRange('month')">Month</button>
+                        <button class="submit-btn history-range-btn" style="padding: 10px; font-size: 13px; margin-top:0;" data-range="today">Today</button>
+                        <button class="submit-btn history-range-btn" style="padding: 10px; font-size: 13px; margin-top:0;" data-range="week">7 Days</button>
+                        <button class="submit-btn history-range-btn" style="padding: 10px; font-size: 13px; margin-top:0;" data-range="month">Month</button>
                     </div>
                 </div>
 
@@ -229,8 +229,8 @@
                     <input type="datetime-local" id="history-end" style="width:100%; padding: 12px 16px; background-color: rgba(15, 23, 42, 0.9); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 10px; color: white; font-size: 0.95rem; color-scheme: dark;">
                 </div>
                 
-                <button class="submit-btn" style="padding: 14px; font-size: 1rem; margin-bottom: 10px;" onclick="fetchAndDrawHistory()">Load History Track</button>
-                <button class="submit-btn" onclick="clearHistoryTrack()" style="background: rgba(255,255,255,0.05); padding: 12px; font-size: 0.95rem;">Clear Map</button>
+                <button class="submit-btn" id="btn-load-history" style="padding: 14px; font-size: 1rem; margin-bottom: 10px;">Load History Track</button>
+                <button class="submit-btn" id="btn-clear-history" style="background: rgba(255,255,255,0.05); padding: 12px; font-size: 0.95rem;">Clear Map</button>
             </div>
             
             <div class="detail-card" id="history-stats" style="display: none;">
@@ -303,10 +303,10 @@
                 <span class="htb-range-tag" id="htb-range-tag">--</span>
             </div>
             <div class="htb-actions">
-                <button class="htb-action-btn" id="htb-btn-toggle" onclick="toggleHtbCollapse()" title="Minimize / Expand Banner">
+                <button class="htb-action-btn" id="htb-btn-toggle" title="Minimize / Expand Banner">
                     <i class="fa-solid fa-chevron-up" id="htb-toggle-icon"></i>
                 </button>
-                <button class="htb-action-btn htb-close-btn" onclick="clearHistoryTrack()" title="Exit tracking history">
+                <button class="htb-action-btn htb-close-btn" id="htb-btn-close" title="Exit tracking history">
                     <i class="fa-solid fa-xmark"></i> <span>Exit Track</span>
                 </button>
             </div>

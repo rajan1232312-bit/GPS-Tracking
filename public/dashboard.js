@@ -615,7 +615,7 @@
             if (!deviceItem) {
                 const list = document.getElementById('sidebar-device-list');
                 const html = `
-                    <div class="device-item" id="sidebar-dev-${data.id}" onclick="openDeviceDetails('${data.id}')">
+                    <div class="device-item" id="sidebar-dev-${data.id}" data-action="open-details" data-uid="${data.id}">
                         <div class="device-icon" style="color: var(--success);"><i class="fa-solid ${getIconClass(data.type)}"></i></div>
                         <div class="device-info">
                             <div class="device-name">${data.id}</div>
@@ -972,7 +972,7 @@
 
                     // Populate Sidebar List
                     const html = `
-                        <div class="device-item" id="sidebar-dev-${device.device_uid}" onclick="openDeviceDetails('${device.device_uid}')">
+                        <div class="device-item" id="sidebar-dev-${device.device_uid}" data-action="open-details" data-uid="${device.device_uid}">
                             <div class="device-icon" style="color: ${isOnline ? 'var(--success)' : '#ef4444'}">
                                 <i class="fa-solid ${getIconClass(device.type)}"></i>
                             </div>
@@ -987,10 +987,10 @@
                                     <span id="sidebar-dev-watch-${device.device_uid}">${watchHtml}</span>
                                 </div>
                             </div>
-                            <div class="edit-btn" onclick="editDevice(event, '${device.device_uid}', '${device.type || 'Person'}')" title="Edit Tracker">
+                            <div class="edit-btn" data-action="edit-device" data-uid="${device.device_uid}" data-type="${device.type || 'Person'}" title="Edit Tracker">
                                 <i class="fa-solid fa-pen"></i>
                             </div>
-                            <div class="delete-btn" onclick="deleteDevice(event, '${device.device_uid}')" title="Delete Tracker">
+                            <div class="delete-btn" data-action="delete-device" data-uid="${device.device_uid}" title="Delete Tracker">
                                 <i class="fa-solid fa-trash"></i>
                             </div>
                         </div>
@@ -1019,7 +1019,7 @@
                         }
                         
                         const tableRow = `
-                            <tr style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="viewLogs('${device.device_uid}')">
+                            <tr class="device-table-row" data-action="view-logs" data-uid="${device.device_uid}">
                                 <td><strong>${device.device_uid}</strong></td>
                                 <td><span style="font-size: 13px; color: var(--text-secondary);"><i class="fa-solid ${getIconClass(device.type)}" style="margin-right: 6px; color: var(--accent);"></i>${device.type || 'Person'}</span></td>
                                 <td><span class="status-badge ${isOnline ? 'online' : 'offline'}" id="table-status-${device.device_uid}">${isOnline ? 'Online' : 'Offline'}</span></td>
@@ -2222,3 +2222,34 @@
                 setTimeout(() => map.invalidateSize(), 360);
             });
         }
+
+        // Setup history controls and event delegation for dynamic tracker items
+        document.querySelectorAll('.history-range-btn').forEach(btn => {
+            btn.addEventListener('click', () => setHistoryRange(btn.dataset.range));
+        });
+        const loadHistoryBtn = document.getElementById('btn-load-history');
+        if (loadHistoryBtn) loadHistoryBtn.addEventListener('click', fetchAndDrawHistory);
+        const clearHistoryBtn = document.getElementById('btn-clear-history');
+        if (clearHistoryBtn) clearHistoryBtn.addEventListener('click', clearHistoryTrack);
+        const htbToggleBtn = document.getElementById('htb-btn-toggle');
+        if (htbToggleBtn) htbToggleBtn.addEventListener('click', toggleHtbCollapse);
+        const htbCloseBtn = document.getElementById('htb-btn-close');
+        if (htbCloseBtn) htbCloseBtn.addEventListener('click', clearHistoryTrack);
+
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            const action = target.dataset.action;
+            const uid = target.dataset.uid;
+            if (action === 'open-details') {
+                openDeviceDetails(uid);
+            } else if (action === 'edit-device') {
+                e.stopPropagation();
+                editDevice(e, uid, target.dataset.type || 'Person');
+            } else if (action === 'delete-device') {
+                e.stopPropagation();
+                deleteDevice(e, uid);
+            } else if (action === 'view-logs') {
+                viewLogs(uid);
+            }
+        });

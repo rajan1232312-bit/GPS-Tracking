@@ -82,3 +82,25 @@ document.querySelectorAll('.custom-select').forEach(wrapper => {
                 text.style.color = '#22c55e';
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('register-form');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    window.location.href = '/dashboard.html';
+                });
+            }
+
+            const toggleBtn = document.getElementById('password-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', togglePassword);
+            }
+
+            const passwordInput = document.getElementById('password');
+            if (passwordInput) {
+                passwordInput.addEventListener('input', function() {
+                    checkPasswordStrength(this.value);
+                });
+            }
+        });

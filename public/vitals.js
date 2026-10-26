@@ -558,3 +558,7 @@ const deviceSelect = document.getElementById('device-select');
                 }
             }
         });
+
+        if (deviceSelect) {
+            deviceSelect.addEventListener('change', onDeviceChange);
+        }

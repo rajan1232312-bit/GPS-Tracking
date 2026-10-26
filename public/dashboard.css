@@ -1557,3 +1557,13 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             line-height: 1.4;
         }
+
+        .device-table-row {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .device-table-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+

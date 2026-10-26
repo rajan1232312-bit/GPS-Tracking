@@ -406,3 +406,18 @@ const logsThead = document.getElementById('logs-thead');
                 }
             }
         });
+
+        // Event listeners (replaces inline HTML event attributes)
+        if (logTypeFilter) logTypeFilter.addEventListener('change', onLogTypeChange);
+        if (deviceFilter) deviceFilter.addEventListener('change', applyFilter);
+        const transportFilterEl = document.getElementById('transport-filter');
+        if (transportFilterEl) transportFilterEl.addEventListener('change', applyFilter);
+
+        const refreshBtn = document.getElementById('refresh-logs-btn');
+        if (refreshBtn) refreshBtn.addEventListener('click', fetchLogs);
+
+        const prevBtn = document.getElementById('prev-page-btn');
+        if (prevBtn) prevBtn.addEventListener('click', () => changePage(-1));
+
+        const nextBtn = document.getElementById('next-page-btn');
+        if (nextBtn) nextBtn.addEventListener('click', () => changePage(1));

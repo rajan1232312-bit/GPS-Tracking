@@ -35,7 +35,7 @@
                 <!-- Log Type Filter -->
                 <div class="filter-container">
                     <i class="fa-solid fa-layer-group filter-icon"></i>
-                    <select id="log-type-filter" class="aesthetic-select" onchange="onLogTypeChange()">
+                    <select id="log-type-filter" class="aesthetic-select">
                         <option value="telemetry">🛰️ GPS Telemetry Logs</option>
                         <option value="vitals">🩺 Health Vitals Logs</option>
                     </select>
@@ -44,7 +44,7 @@
                 <!-- Device Filter -->
                 <div class="filter-container">
                     <i class="fa-solid fa-microchip filter-icon"></i>
-                    <select id="device-filter" class="aesthetic-select" onchange="applyFilter()">
+                    <select id="device-filter" class="aesthetic-select">
                         <option value="all">All Devices (Total)</option>
                     </select>
                 </div>
@@ -52,7 +52,7 @@
                 <!-- Transport Filter -->
                 <div class="filter-container">
                     <i class="fa-solid fa-tower-broadcast filter-icon"></i>
-                    <select id="transport-filter" class="aesthetic-select" onchange="applyFilter()">
+                    <select id="transport-filter" class="aesthetic-select">
                         <option value="all">All Networks</option>
                         <option value="0">🟣 LoRa (0)</option>
                         <option value="1">🔵 GSM (1)</option>
@@ -62,7 +62,7 @@
             </div>
 
             <div class="toolbar-actions">
-                <button class="nav-btn" onclick="fetchLogs()" title="Refresh Logs" style="padding: 10px 18px;">
+                <button class="nav-btn" id="refresh-logs-btn" title="Refresh Logs" style="padding: 10px 18px;">
                     <i class="fa-solid fa-rotate"></i> Refresh
                 </button>
             </div>
@@ -89,9 +89,9 @@
             <div class="pagination-container" id="pagination-container" style="display: none;">
                 <div class="pagination-info" id="pagination-info">Total Logs: <strong>0</strong></div>
                 <div class="pagination-buttons">
-                    <button class="nav-btn" id="prev-page-btn" onclick="changePage(-1)" disabled><i class="fa-solid fa-chevron-left"></i> Previous</button>
+                    <button class="nav-btn" id="prev-page-btn" disabled><i class="fa-solid fa-chevron-left"></i> Previous</button>
                     <span id="page-indicator" style="color: #f8fafc; font-weight: 600; font-size: 0.95rem; padding: 0 10px;">Page 1</span>
-                    <button class="nav-btn" id="next-page-btn" onclick="changePage(1)"><i class="fa-solid fa-chevron-right"></i> Next</button>
+                    <button class="nav-btn" id="next-page-btn"><i class="fa-solid fa-chevron-right"></i> Next</button>
                 </div>
             </div>
 
