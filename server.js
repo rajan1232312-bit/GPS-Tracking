@@ -384,6 +384,14 @@ app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(), camera=()');
+
+    // OWASP Cache-Control Policy (CWE-525 / WSTG-ATHN-06)
+    // Dynamic APIs, HTML documents, and root routes must not be cached by proxies or browsers
+    if (req.path.startsWith('/api/') || req.path.endsWith('.html') || req.path === '/') {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
     next();
 });
 
@@ -395,10 +403,26 @@ http.ServerResponse.prototype.writeHead = function(statusCode, ...args) {
     if (!this.getHeader('X-Frame-Options')) this.setHeader('X-Frame-Options', 'SAMEORIGIN');
     if (!this.getHeader('Referrer-Policy')) this.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     if (!this.getHeader('Content-Security-Policy')) this.setHeader('Content-Security-Policy', CSP_POLICY);
+    if (!this.getHeader('Cache-Control')) {
+        this.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        this.setHeader('Pragma', 'no-cache');
+        this.setHeader('Expires', '0');
+    }
     return origWriteHead.apply(this, [statusCode, ...args]);
 };
 
-app.use(express.static('public'));
+app.use(express.static('public', {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        } else {
+            // Static assets (CSS, JS, Fonts, Images) safely cached with validation
+            res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+        }
+    }
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // Hardware HTTP Tracker Endpoint (Unified GPS + Vitals) — Supports single packet, single-device batch, or multi-device gateway batch
