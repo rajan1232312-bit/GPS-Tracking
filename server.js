@@ -360,7 +360,7 @@ const CSP_POLICY = [
     "frame-ancestors 'self'",
     "object-src 'none'",
     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
     "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
     "img-src 'self' data: blob: https://mt0.google.com https://mt1.google.com https://mt2.google.com https://mt3.google.com https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://a.tile.openstreetmap.fr https://b.tile.openstreetmap.fr https://c.tile.openstreetmap.fr https://server.arcgisonline.com https://troopcomfortslimited.co.in",
     "connect-src 'self' ws: wss: https://nominatim.openstreetmap.org",
