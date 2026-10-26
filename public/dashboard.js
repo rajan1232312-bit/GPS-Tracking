@@ -1062,7 +1062,7 @@
                             window.deviceMarkers[device.device_uid].setIcon(getMapIcon(device.isOnline));
                         }
                         
-                        // Historical track rendering removed per user request
+                        // Historical track rendering omitted by configuration
                     }
                 });
             } catch (err) {
@@ -1766,7 +1766,7 @@
                     });
                 }
 
-                // Automatically dismiss history panel so user immediately sees the track on the map
+                // Automatically dismiss history panel to expose the map track
                 const hPanel = document.getElementById('history-panel');
                 if (hPanel) hPanel.classList.remove('active');
                 const hNavBtn = document.getElementById('nav-history');

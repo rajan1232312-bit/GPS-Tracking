@@ -277,7 +277,7 @@ const logsThead = document.getElementById('logs-thead');
                 const response = await fetch(`${endpoint}?page=${currentPage}&limit=50&device_uid=${uid}`);
                 const result = await response.json();
                 
-                // If user switched log type or another fetch occurred in-between, discard stale response
+                // Discard stale response if log type changed or a newer request completed
                 if (fetchId !== activeFetchId || currentLogType !== requestedType) {
                     return;
                 }
