@@ -348,6 +348,16 @@ const io = new Server(httpServer, {
 });
 
 app.disable('x-powered-by');
+app.enable('trust proxy');
+
+// --- Force HTTPS Redirection behind Reverse Proxies (Render / Cloudflare) ---
+app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'] !== 'https') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+        return res.redirect(301, `https://${req.headers.host || req.hostname}${req.originalUrl}`);
+    }
+    next();
+});
 
 // --- Security & Transport Encryption Middleware (OWASP CSP & HSTS) ---
 // Explicitly defines directives that have no fallback (base-uri, form-action, frame-ancestors, object-src),
