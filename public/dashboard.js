@@ -119,7 +119,7 @@
             }, { passive: false });
         }
 
-        // Remove hacky slideTo logic, use CSS hardware acceleration instead
+        // Optimized zoom transition using CSS hardware acceleration
         map.on('zoomstart', () => {
             if (window.deviceMarkers) {
                 Object.values(window.deviceMarkers).forEach(marker => {
@@ -1521,7 +1521,7 @@
         const closeHistoryBtn = document.getElementById('close-history-btn');
         const historyDeviceSelect = document.getElementById('history-device-select');
 
-        // Robust date parser (handles UTC 'Z', SQLite timestamps, and ISO strings)
+        // Robust date parser (handles UTC 'Z', stored timestamps, and ISO strings)
         function parseLogDate(dateInput) {
             if (!dateInput) return null;
             if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? null : dateInput;
@@ -1534,7 +1534,7 @@
             return isNaN(d.getTime()) ? new Date(dateInput) : d;
         }
 
-        // Returns local calendar date key 'YYYY-MM-DD'
+        // Returns local calendar date string 'YYYY-MM-DD'
         function getLocalDateKey(dateInput) {
             const d = parseLogDate(dateInput);
             if (!d || isNaN(d.getTime())) return 'Unknown';
@@ -1669,7 +1669,7 @@
             const endVal = document.getElementById('history-end').value;
             if (!startVal || !endVal) return showPremiumToast('Please select a date range.', 'warning');
 
-            // Convert local time back to UTC strings for DB query
+            // Convert local time back to UTC strings for telemetry fetch
             const startStr = new Date(startVal).toISOString().replace('T', ' ').substring(0, 19);
             const endStr = new Date(endVal).toISOString().replace('T', ' ').substring(0, 19);
 
@@ -1736,7 +1736,7 @@
                     group.distanceMeters = d;
                 });
 
-                // Calculate calendar days in query range vs active days with recorded data
+                // Calculate calendar days in selected range vs active days with recorded data
                 const startDateObj = new Date(startVal);
                 const endDateObj = new Date(endVal);
                 const diffMs = Math.abs(endDateObj.getTime() - startDateObj.getTime());
@@ -1744,7 +1744,7 @@
                 const activeDatesCount = Object.keys(groupedByDate).length;
                 const inactiveDaysCount = Math.max(0, totalQueryDays - activeDatesCount);
 
-                // Cache data globally for instant date filtering without re-querying
+                // Cache data globally for instant date filtering without refetching
                 currentHistoryData = {
                     uid,
                     startDateObj,
