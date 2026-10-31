@@ -89,6 +89,25 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.25);
         }
 
+        .nav-btn:disabled,
+        .nav-btn.is-refreshing {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            border-color: rgba(59, 130, 246, 0.4);
+            background: rgba(59, 130, 246, 0.12);
+        }
+
+        .table-refresh-flash {
+            animation: tableFlash 0.35s ease-out;
+        }
+
+        @keyframes tableFlash {
+            0% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
         .nav-btn-primary {
             background: rgba(59, 130, 246, 0.15);
             border-color: rgba(59, 130, 246, 0.4);

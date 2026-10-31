@@ -187,15 +187,23 @@ const logsThead = document.getElementById('logs-thead');
         }
 
         async function fetchDeviceList() {
+            if (!deviceFilter) return;
             try {
-                const response = await fetch('/api/devices');
+                const currentVal = deviceFilter.value;
+                const response = await fetch(`/api/devices?_t=${Date.now()}`, { cache: 'no-store' });
                 const devices = await response.json();
+                
+                deviceFilter.innerHTML = '<option value="all">All Devices (Total)</option>';
                 devices.forEach(d => {
                     const option = document.createElement('option');
                     option.value = d.device_uid;
                     option.textContent = d.device_uid;
                     deviceFilter.appendChild(option);
                 });
+                
+                if (currentVal && Array.from(deviceFilter.options).some(o => o.value === currentVal)) {
+                    deviceFilter.value = currentVal;
+                }
             } catch (err) {
                 console.error("Failed to load device list for filter", err);
             }
@@ -221,6 +229,11 @@ const logsThead = document.getElementById('logs-thead');
                     </tr>
                 `;
             }
+
+            // Subtle flash animation to indicate freshly loaded data
+            logsBody.classList.remove('table-refresh-flash');
+            void logsBody.offsetWidth; // trigger reflow
+            logsBody.classList.add('table-refresh-flash');
         }
 
         let activeFetchId = 0;
@@ -272,9 +285,9 @@ const logsThead = document.getElementById('logs-thead');
             const requestedType = currentLogType;
 
             try {
-                const uid = deviceFilter.value || 'all';
+                const uid = (deviceFilter && deviceFilter.value) || 'all';
                 const endpoint = requestedType === 'vitals' ? '/api/logs/vitals' : '/api/logs/all';
-                const response = await fetch(`${endpoint}?page=${currentPage}&limit=50&device_uid=${uid}`);
+                const response = await fetch(`${endpoint}?page=${currentPage}&limit=50&device_uid=${encodeURIComponent(uid)}&_t=${Date.now()}`, { cache: 'no-store' });
                 const result = await response.json();
                 
                 // Discard stale response if log type changed or a newer request completed
@@ -292,14 +305,20 @@ const logsThead = document.getElementById('logs-thead');
                     renderLogs(data);
                     
                     // Show and update pagination UI
-                    document.getElementById('pagination-container').style.display = 'flex';
-                    document.getElementById('page-indicator').textContent = `Page ${currentPage} of ${totalPages}`;
-                    document.getElementById('pagination-info').innerHTML = `Total Logs: <strong style="color: #f8fafc;">${totalLogs}</strong>`;
-                    document.getElementById('prev-page-btn').disabled = currentPage <= 1;
-                    document.getElementById('next-page-btn').disabled = currentPage >= totalPages;
+                    const paginationContainer = document.getElementById('pagination-container');
+                    if (paginationContainer) paginationContainer.style.display = 'flex';
+                    const pageIndicator = document.getElementById('page-indicator');
+                    if (pageIndicator) pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+                    const paginationInfo = document.getElementById('pagination-info');
+                    if (paginationInfo) paginationInfo.innerHTML = `Total Logs: <strong style="color: #f8fafc;">${totalLogs}</strong>`;
+                    const prevBtn = document.getElementById('prev-page-btn');
+                    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+                    const nextBtn = document.getElementById('next-page-btn');
+                    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
                 } else {
                     renderLogs([]);
-                    document.getElementById('pagination-container').style.display = 'none';
+                    const paginationContainer = document.getElementById('pagination-container');
+                    if (paginationContainer) paginationContainer.style.display = 'none';
                 }
             } catch (error) {
                 if (fetchId !== activeFetchId) return;
@@ -313,6 +332,35 @@ const logsThead = document.getElementById('logs-thead');
                         </td>
                     </tr>
                 `;
+            }
+        }
+
+        async function handleRefresh() {
+            if (!refreshBtn) return;
+            const icon = refreshBtn.querySelector('i');
+            
+            // Set refreshing UI state & smooth spinner animation
+            refreshBtn.disabled = true;
+            if (icon) icon.classList.add('fa-spin');
+            refreshBtn.classList.add('is-refreshing');
+            
+            showLoadingState();
+            currentPage = 1; // Reset to page 1 to load latest live telemetry stream
+            
+            try {
+                await Promise.all([
+                    fetchDeviceList(),
+                    fetchLogs()
+                ]);
+            } catch (err) {
+                console.error('Refresh failed:', err);
+            } finally {
+                // Keep smooth spinning feedback visible for at least 400ms
+                setTimeout(() => {
+                    if (icon) icon.classList.remove('fa-spin');
+                    refreshBtn.disabled = false;
+                    refreshBtn.classList.remove('is-refreshing');
+                }, 400);
             }
         }
 
@@ -414,7 +462,7 @@ const logsThead = document.getElementById('logs-thead');
         if (transportFilterEl) transportFilterEl.addEventListener('change', applyFilter);
 
         const refreshBtn = document.getElementById('refresh-logs-btn');
-        if (refreshBtn) refreshBtn.addEventListener('click', fetchLogs);
+        if (refreshBtn) refreshBtn.addEventListener('click', handleRefresh);
 
         const prevBtn = document.getElementById('prev-page-btn');
         if (prevBtn) prevBtn.addEventListener('click', () => changePage(-1));
