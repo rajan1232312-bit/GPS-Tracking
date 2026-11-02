@@ -401,6 +401,8 @@
 
                 // Velocity & Heading States
                 this.v_filter = 0;
+                this.v_regression = 0;
+                this.instSpeed = 0;
                 this.prevRawSpeed = 0;
                 this.heading = 0;
                 this.pendingHeading = null;
@@ -484,8 +486,13 @@
                 this.gAlpha = Math.min(a, 0.90);
                 this.gBeta  = Math.min(b, 0.50);
 
-                // Dynamically scale sample windows across cadences
-                this.windowN = Math.min(12, Math.max(3, Math.ceil(30.0 / T) + 1));
+                // Dynamically scale sample windows across cadences:
+                // T = 30s -> windowN = 2 (locks stationary in 30s alone!)
+                // T = 15s -> windowN = 3 (locks in 30s)
+                // T = 10s -> windowN = 4 (locks in 30s)
+                // T = 5s  -> windowN = 6 (locks in 25-30s)
+                // T = 3s  -> windowN = 10 (locks in 27-30s)
+                this.windowN = Math.min(12, Math.max(2, Math.ceil(25.0 / T) + 1));
                 this.releaseConfirm = Math.min(3, Math.max(1, Math.round(10.0 / T)));
 
                 this.filterLat.setGains(this.gAlpha, this.gBeta);
@@ -606,21 +613,28 @@
                     this.rejectStreak = 0;
                 }
 
-                // 7. Update Filter State
+                // 7. Update Filter State & Instantaneous Velocity (Caveat 2)
                 const updLat = this.filterLat.update(rawLat, timestamp, this.isStationary);
                 const updLon = this.filterLng.update(rawLon, timestamp, this.isStationary);
 
+                const instSpeed = dt_sec > 0 ? (this.getDistanceMeters(this.lastAcceptedRaw.lat, this.lastAcceptedRaw.lon, rawLat, rawLon) / dt_sec) : 0;
+                this.instSpeed = instSpeed;
+
                 this.v_filter = Math.hypot(updLat.v * 111320.0, updLon.v * 111320.0 * Math.cos(latRad));
-                this.prevRawSpeed = this.v_filter;
+                this.prevRawSpeed = Math.max(this.v_filter, instSpeed);
 
                 // 8. Push RAW Coordinates to Window
                 this.window.push({ t: timestamp, lat: rawLat, lon: rawLon, acc: accuracy });
                 if (this.window.length > this.windowN) this.window.shift();
 
-                // 9. Net-Displacement Stationary Detection
+                // 9. Dual-Confirmation Stationary Detection (Caveat 1: Net-Displacement + LSQ Regression Velocity)
+                this.v_regression = this.calculateRegressionVelocity();
                 if (!this.isStationary && this.window.length >= this.windowN) {
                     const netDisp = this.getDistanceMeters(this.window[0].lat, this.window[0].lon, rawLat, rawLon);
-                    if (netDisp < Math.max(6.0, 1.5 * accuracy)) {
+                    const speedThresh = (this.currentProfile === 'Person') ? 0.30 : 0.40; // m/s
+                    
+                    // Locks stationary if EITHER net displacement is within noise floor OR LSQ trend velocity is near zero
+                    if (netDisp < Math.max(6.0, 1.5 * accuracy) || this.v_regression < speedThresh) {
                         this.isStationary = true;
                         this.updateStationaryAnchorCentroid();
                         this.leaveCount = 0;
@@ -634,7 +648,7 @@
                     const d = this.angleDiff(this.heading, candidateBearing);
 
                     // Reversal override: allow immediate flip if confirmed motion
-                    const isConfirmedMotion = (this.v_filter > 0.8 || rawDispMeters > 2.0 * accuracy);
+                    const isConfirmedMotion = (instSpeed > 0.6 || this.v_filter > 0.8 || rawDispMeters > 2.0 * accuracy);
                     if (Math.abs(d) >= this.REVERSAL_ANGLE && isConfirmedMotion) {
                         this.heading = candidateBearing;
                         this.pendingHeading = null;
@@ -689,7 +703,7 @@
                     lat: newTarget.lat,
                     lon: newTarget.lng,
                     heading: this.heading,
-                    speed_kmh: (this.isStationary ? 0.0 : (this.v_filter * 3.6)).toFixed(1),
+                    speed_kmh: this.isStationary ? '0.0' : (instSpeed * 3.6).toFixed(1),
                     isStationary: this.isStationary,
                     state: this.isStationary ? 'STATIONARY' : 'MOVING'
                 };
@@ -721,8 +735,9 @@
                     const lat = Math.round((start.lat + (target.lat - start.lat) * p) * 1e6) / 1e6;
                     const lng = Math.round((start.lng + (target.lng - start.lng) * p) * 1e6) / 1e6;
 
-                    if (this.marker._icon) this.marker._icon.style.transition = 'none';
-                    if (this.marker._shadow) this.marker._shadow.style.transition = 'none';
+                    // TODO: replace _icon/_shadow with CSS class toggle when Leaflet 2.x lands
+                    if (this.marker && this.marker._icon) this.marker._icon.style.transition = 'none';
+                    if (this.marker && this.marker._shadow) this.marker._shadow.style.transition = 'none';
 
                     this.marker.setLatLng([lat, lng]);
 
@@ -739,8 +754,9 @@
 
             snapTo(pos) {
                 if (this.animationId) cancelAnimationFrame(this.animationId);
-                if (this.marker._icon) this.marker._icon.style.transition = 'none';
-                if (this.marker._shadow) this.marker._shadow.style.transition = 'none';
+                // TODO: replace _icon/_shadow with CSS class toggle when Leaflet 2.x lands
+                if (this.marker && this.marker._icon) this.marker._icon.style.transition = 'none';
+                if (this.marker && this.marker._shadow) this.marker._shadow.style.transition = 'none';
 
                 const lat = Math.round(pos.lat * 1e6) / 1e6;
                 const lng = Math.round(pos.lng * 1e6) / 1e6;
@@ -765,6 +781,39 @@
                         svg.style.transformOrigin = 'center center';
                     }
                 }
+            }
+
+            calculateRegressionVelocity() {
+                if (this.window.length < 2) return 0;
+                const t0 = this.window[0].t;
+                const lat0 = this.window[0].lat;
+                const lon0 = this.window[0].lon;
+                const cosLat = Math.cos((lat0 * Math.PI) / 180.0);
+
+                let sumT = 0, sumT2 = 0, sumE = 0, sumN = 0, sumTE = 0, sumTN = 0;
+                const n = this.window.length;
+
+                for (let i = 0; i < n; i++) {
+                    const p = this.window[i];
+                    const tSec = (p.t - t0) / 1000.0;
+                    const eM = (p.lon - lon0) * 111320.0 * cosLat;
+                    const nM = (p.lat - lat0) * 111320.0;
+
+                    sumT += tSec;
+                    sumT2 += tSec * tSec;
+                    sumE += eM;
+                    sumN += nM;
+                    sumTE += tSec * eM;
+                    sumTN += tSec * nM;
+                }
+
+                const denom = (n * sumT2) - (sumT * sumT);
+                if (Math.abs(denom) < 1e-5) return 0;
+
+                const slopeE = ((n * sumTE) - (sumT * sumE)) / denom;
+                const slopeN = ((n * sumTN) - (sumT * sumN)) / denom;
+
+                return Math.hypot(slopeE, slopeN);
             }
 
             updateStationaryAnchorCentroid() {
