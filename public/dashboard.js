@@ -341,217 +341,425 @@
         // Premium Smooth Tracking Architecture (Leaflet Adapted)
         // ========================================================
         
-        // 1. Kalman Filter for Predictive GPS Smoothing
-        class SimpleKalmanFilter {
-            constructor(r = 0.00005, q = 0.00001) {
-                this.r = r; // Measurement noise (expected GPS error in degrees, ~5m)
-                this.q = q; // Process noise (expected actual movement)
-                this.p = 1; // Estimation error covariance
-                this.x = null; // Predicted value
+        // 1. Kalata Constant-Velocity Alpha-Beta Filter
+        class AlphaBetaFilterAxis {
+            constructor() {
+                this.baseAlpha = 0.35;
+                this.baseBeta = 0.08;
+                this.x = null; // Position in degrees
+                this.v = 0;    // Velocity in degrees / second
+                this.t = null; // Milliseconds timestamp
             }
-            filter(measurement) {
-                if (this.x === null) {
-                    this.x = measurement;
-                } else {
-                    // Prediction
-                    this.p = this.p + this.q;
-                    // Update
-                    let k = this.p / (this.p + this.r);
-                    this.x = this.x + k * (measurement - this.x);
-                    this.p = (1 - k) * this.p;
+
+            reset(pos, tMs) {
+                this.x = pos;
+                this.v = 0;
+                this.t = tMs;
+            }
+
+            setGains(a, b) {
+                this.baseAlpha = a;
+                this.baseBeta = b;
+            }
+
+            update(z, tMs, isStationary = false) {
+                if (this.x === null || this.t === null) {
+                    this.reset(z, tMs);
+                    return { x: this.x, v: 0, r: 0 };
                 }
-                return this.x;
+
+                const dt = Math.max(0.05, Math.min((tMs - this.t) / 1000, 60.0));
+                
+                // 1. Predict
+                const xp = this.x + (this.v * dt);
+                // 2. Residual
+                const r = z - xp;
+
+                // 3. Gains: Damped when stationary, Kalata-tuned when moving
+                const alpha = isStationary ? 0.02 : this.baseAlpha;
+                const beta  = isStationary ? 0.005 : this.baseBeta;
+
+                // 4. Update
+                this.x = xp + (alpha * r);
+                this.v = this.v + ((beta * r) / dt);
+                this.t = tMs;
+
+                return { x: this.x, v: this.v, r: r };
             }
         }
+
+        // Backward compatibility alias
+        class SimpleKalmanFilter extends AlphaBetaFilterAxis {}
 
         class SmoothLeafletTracker {
             constructor(map, marker) {
                 this.map = map;
                 this.marker = marker;
-                
-                // Initialize Independent Kalman Filters for Lat and Lng
-                this.kalmanLat = new SimpleKalmanFilter();
-                this.kalmanLng = new SimpleKalmanFilter();
 
-                this.lastValidPos = null;
-                this.isFirstFix = true;
-                this.animationId = null;
+                this.filterLat = new AlphaBetaFilterAxis();
+                this.filterLng = new AlphaBetaFilterAxis();
+
+                // Velocity & Heading States
+                this.v_filter = 0;
+                this.prevRawSpeed = 0;
+                this.heading = 0;
+                this.pendingHeading = null;
                 this._currentRotation = 0;
+                this.animationId = null;
 
+                // Historical Acceptance
+                this.lastAcceptedRaw = null;
+                this.lastAcceptedFiltered = null;
+                this.lastValidPos = null;
+                this.lastAcc = 10.0;
+
+                // Cadence & Outlier Protection
+                this.measuredCadence = null;
+                this.lastGapDt = null;
+                this.rejectStreak = 0;
+                this.acceptedCount = 0;
+
+                // Kalata Adaptive Tuning Properties
+                this.gAlpha = 0.67;
+                this.gBeta = 0.36;
+                this.windowN = 7;
+                this.releaseConfirm = 2;
+
+                // Stationary Centroid Anchoring
                 this.isStationary = false;
-                this.stationaryStartTime = null;
+                this.stationaryAnchor = null;
+                this.leaveCount = 0;
+                this.window = []; // Stores raw points: {t, lat, lon, acc}
 
-                // Base Tunable parameters (will be overwritten by profiles)
-                this.MIN_DISTANCE = 4;
-                this.STATIONARY_SPEED = 0.4;
-                this.STATIONARY_TIME = 3000;
-                this.EXIT_STATIONARY_DIST = 10;
-                this.MAX_SPEED = 55;
-                this.SMOOTHING = 0.32;
-                this.ANIMATION_MS = 480;
-                this.currentProfile = 'Car';
+                // Profile Configuration (Defaults to Person for human walking tests)
+                this.currentProfile = 'Person';
+                this.ANCHOR_RADIUS = 8.0;     // metres
+                this.A_MAX = 1.5;             // m/s^2
+                this.REVERSAL_ANGLE = 140.0;  // degrees
+                this.HYSTERESIS_ANGLE = 35.0; // degrees
+
+                // Live Polyline Trail
+                this.liveTrail = L.polyline([], {
+                    color: '#3b82f6',
+                    weight: 3,
+                    opacity: 0.7,
+                    smoothFactor: 0,
+                    interactive: false
+                }).addTo(this.map);
             }
 
             applyProfile(type) {
-                if (this.currentProfile === type) return;
-                this.currentProfile = type || 'Car';
+                const isPerson = (type === 'Person' || type === 'Wearable' || type === 'Health Band');
+                const targetProfile = isPerson ? 'Person' : 'Car';
+                if (this.currentProfile === targetProfile) return;
 
-                if (this.currentProfile === 'Person') {
-                    // Human Profile: Smooth tracking, ignoring < 2m jitter
-                    this.MIN_DISTANCE = 2;             // Ignore noise under 2 meters
-                    this.STATIONARY_SPEED = 0.2;       
-                    this.STATIONARY_TIME = 5000;       
-                    this.EXIT_STATIONARY_DIST = 2;     
-                    this.MAX_SPEED = 15;               
-                    this.SMOOTHING = 1.0;              // 1.0 = No lagging/drifting behind the raw point
-                    this.ANIMATION_MS = 1500;          // Fast, precise snap
+                this.currentProfile = targetProfile;
+                if (isPerson) {
+                    this.ANCHOR_RADIUS = 8.0;
+                    this.A_MAX = 1.5;
+                    this.REVERSAL_ANGLE = 140.0;
+                    this.HYSTERESIS_ANGLE = 35.0;
                 } else {
-                    // Vehicle Profile: Smooth tracking, ignoring < 2m jitter
-                    this.MIN_DISTANCE = 2;             // Ignore noise under 2 meters
-                    this.STATIONARY_SPEED = 0.4;       
-                    this.STATIONARY_TIME = 3000;       
-                    this.EXIT_STATIONARY_DIST = 5;    
-                    this.MAX_SPEED = 55;               
-                    this.SMOOTHING = 1.0;              // 1.0 = No lagging/drifting
-                    this.ANIMATION_MS = 480;           
+                    this.ANCHOR_RADIUS = 18.0;
+                    this.A_MAX = 3.0;
+                    this.REVERSAL_ANGLE = 150.0;
+                    this.HYSTERESIS_ANGLE = 35.0;
                 }
+            }
+
+            // Kalata Optimal Tracking Index Tuning (Continuous Adaptation)
+            tune() {
+                const T = Math.min(60.0, Math.max(1.0, this.measuredCadence || 5.0));
+                // Process noise variance: 0.15 for Person walking, 1.0 for Vehicle driving
+                const sa = (this.currentProfile === 'Person') ? 0.15 : 1.0;
+                // Sensor noise based on reported GPS accuracy
+                const sn = 0.6 * (this.lastAcc || 10.0);
+                
+                // Tracking index L
+                const L = (sa * T * T) / sn;
+                const r = (4.0 + L - Math.sqrt(8.0 * L + L * L)) / 4.0;
+                const a = 1.0 - (r * r);
+                const b = 2.0 * (2.0 - a) - 4.0 * Math.sqrt(Math.max(0, 1.0 - a));
+
+                this.gAlpha = Math.min(a, 0.90);
+                this.gBeta  = Math.min(b, 0.50);
+
+                // Dynamically scale sample windows across cadences
+                this.windowN = Math.min(12, Math.max(3, Math.ceil(30.0 / T) + 1));
+                this.releaseConfirm = Math.min(3, Math.max(1, Math.round(10.0 / T)));
+
+                this.filterLat.setGains(this.gAlpha, this.gBeta);
+                this.filterLng.setGains(this.gAlpha, this.gBeta);
             }
 
             onGpsUpdate(raw) {
                 this.applyProfile(raw.type);
 
-                const rawLat = parseFloat(raw.lat);
-                const rawLng = parseFloat(raw.lng !== undefined ? raw.lng : raw.lon);
-                const accuracy = parseFloat(raw.accuracy || 10);
-                const timestamp = raw.timestamp ? new Date(raw.timestamp).getTime() : Date.now();
+                const rawLat = parseFloat(raw.lat !== undefined ? raw.lat : raw.latitude);
+                const rawLon = parseFloat(raw.lon !== undefined ? raw.lon : (raw.lng !== undefined ? raw.lng : raw.longitude));
+                const accuracy = parseFloat(raw.accuracy || 10.0);
+                this.lastAcc = accuracy;
+                
+                let timestamp = new Date(raw.timestamp).getTime();
+                if (!isFinite(timestamp)) timestamp = Date.now();
 
-                if (!this.isValidPoint(rawLat, rawLng, accuracy, timestamp)) return;
-
-                // 2. Apply Kalman Filter to gracefully smooth the raw GPS coordinates
-                const lat = this.kalmanLat.filter(rawLat);
-                const lng = this.kalmanLng.filter(rawLng);
-
-                const newPos = { lat, lng, timestamp };
-
-                // 1. First valid GPS lock after connection → exact snap (no jump)
-                if (this.isFirstFix || !this.lastValidPos) {
-                    newPos.heading = 0;
-                    this.snapTo(newPos);
-                    this.isFirstFix = false;
-                    this.isStationary = false;
-                    return;
+                // 1. Sanity Validation
+                const maxAcc = (this.currentProfile === 'Person') ? 35.0 : 25.0;
+                if (isNaN(rawLat) || isNaN(rawLon) || rawLat < -90 || rawLat > 90 || rawLon < -180 || rawLon > 180 || accuracy > maxAcc) {
+                    return null;
                 }
 
-                const dist = this.haversine(this.lastValidPos, newPos);
-                const dt = (timestamp - this.lastValidPos.timestamp) / 1000;
-                const speed = dt > 0 ? dist / dt : 0;
-
-                // ====================== ADVANCED HEADING LOCK ======================
-                // GPS jitter at low speeds causes wild pointer spinning. 
-                // We lock the heading if the vehicle is moving slower than 0.8 m/s (~2.8 km/h) to improve responsiveness
-                if (speed > 0.8) {
-                    newPos.heading = this.calculateBearing(this.lastValidPos, newPos);
-                } else {
-                    newPos.heading = this.lastValidPos.heading || 0;
+                // 2. Initial Connection Setup
+                if (!this.lastAcceptedRaw) {
+                    this.lastAcceptedRaw = { lat: rawLat, lon: rawLon, t: timestamp, acc: accuracy };
+                    this.filterLat.reset(rawLat, timestamp);
+                    this.filterLng.reset(rawLon, timestamp);
+                    this.stationaryAnchor = { lat: rawLat, lon: rawLon };
+                    this.lastValidPos = { lat: rawLat, lng: rawLon, timestamp, heading: 0 };
+                    this.snapTo(this.lastValidPos);
+                    this.acceptedCount = 1;
+                    return {
+                        lat: rawLat,
+                        lon: rawLon,
+                        heading: 0,
+                        speed_kmh: '0.0',
+                        isStationary: false,
+                        state: 'INIT'
+                    };
                 }
 
-                // Reject impossible jumps or huge time gaps (reconnects/GPS loss)
-                if (speed > this.MAX_SPEED || dt > 4) {
-                    this.snapTo(newPos);
-                    return;
-                }
+                const dt_sec = Math.max(0.1, (timestamp - this.lastAcceptedRaw.t) / 1000.0);
 
-                // ====================== STATIONARY LOGIC ======================
-                if (this.isStationary) {
-                    if (dist >= this.EXIT_STATIONARY_DIST) {
-                        this.isStationary = false;
+                // 3. Cadence Auto-Sensing & Slowdown Tracking
+                let isReconnect = false;
+                if (this.measuredCadence == null) {
+                    this.measuredCadence = dt_sec;
+                } else if (dt_sec > 2.5 * this.measuredCadence) {
+                    // Check for intentional cadence slowdown (e.g. switching 5s -> 30s)
+                    const isSimilarSlowdown = this.lastGapDt && Math.abs(dt_sec - this.lastGapDt) < 0.35 * this.lastGapDt;
+                    if (isSimilarSlowdown) {
+                        this.measuredCadence = dt_sec;
+                        this.lastGapDt = null;
                     } else {
-                        return; // stay completely frozen
+                        isReconnect = true;
+                        this.lastGapDt = dt_sec;
                     }
                 } else {
-                    if (speed < this.STATIONARY_SPEED) {
-                        if (!this.stationaryStartTime) {
-                            this.stationaryStartTime = timestamp;
-                        } else if (timestamp - this.stationaryStartTime >= this.STATIONARY_TIME) {
-                            this.isStationary = true;
-                            this.stationaryStartTime = null;
-                            return; // freeze now
+                    this.measuredCadence = 0.75 * this.measuredCadence + 0.25 * dt_sec;
+                    this.lastGapDt = null;
+                }
+
+                if (isReconnect) {
+                    this.rejectStreak = 0;
+                    this.prevRawSpeed = 0;
+                    this.v_filter = 0;
+                    this.window = [];
+                    this.isStationary = false;
+                    this.filterLat.reset(rawLat, timestamp);
+                    this.filterLng.reset(rawLon, timestamp);
+                }
+
+                // 4. Update Continuous Kalata Gains
+                this.tune();
+
+                // 5. Raw-Fix Anchor Release Check (Runs BEFORE filter update)
+                if (this.isStationary && this.stationaryAnchor) {
+                    const rawFromAnchor = this.getDistanceMeters(this.stationaryAnchor.lat, this.stationaryAnchor.lon, rawLat, rawLon);
+                    const exitRadius = Math.max(this.ANCHOR_RADIUS, 2.0 * accuracy);
+                    this.leaveCount = rawFromAnchor > exitRadius ? (this.leaveCount + 1) : 0;
+
+                    if (rawFromAnchor > 2.0 * exitRadius || this.leaveCount >= this.releaseConfirm) {
+                        this.isStationary = false;
+                        this.leaveCount = 0;
+                        this.window = [];
+                        this.filterLat.reset(rawLat, timestamp);
+                        this.filterLng.reset(rawLon, timestamp);
+                    }
+                }
+
+                // 6. Outlier Gating with Acceleration Headroom
+                const latRad = (rawLat * Math.PI) / 180.0;
+                const predLat = this.filterLat.x != null ? (this.filterLat.x + this.filterLat.v * dt_sec) : rawLat;
+                const predLon = this.filterLng.x != null ? (this.filterLng.x + this.filterLng.v * dt_sec) : rawLon;
+                const resLatM = (rawLat - predLat) * 111320.0;
+                const resLonM = (rawLon - predLon) * 111320.0 * Math.cos(latRad);
+                const residualM = Math.hypot(resLatM, resLonM);
+
+                const baseGate = Math.max(15.0, 3.0 * accuracy);
+                const vGate = Math.max(this.v_filter, this.prevRawSpeed);
+                const dynamicGate = baseGate + (vGate * dt_sec) + (0.5 * this.A_MAX * dt_sec * dt_sec);
+
+                let isHardReacquire = false;
+                if (this.acceptedCount >= 3 && !isReconnect && residualM > dynamicGate) {
+                    this.rejectStreak++;
+                    this.v_filter *= 0.5;
+                    if (this.rejectStreak >= 3) {
+                        isHardReacquire = true;
+                        this.rejectStreak = 0;
+                        this.window = [];
+                        this.filterLat.reset(rawLat, timestamp);
+                        this.filterLng.reset(rawLon, timestamp);
+                    } else {
+                        return null;
+                    }
+                } else {
+                    this.rejectStreak = 0;
+                }
+
+                // 7. Update Filter State
+                const updLat = this.filterLat.update(rawLat, timestamp, this.isStationary);
+                const updLon = this.filterLng.update(rawLon, timestamp, this.isStationary);
+
+                this.v_filter = Math.hypot(updLat.v * 111320.0, updLon.v * 111320.0 * Math.cos(latRad));
+                this.prevRawSpeed = this.v_filter;
+
+                // 8. Push RAW Coordinates to Window
+                this.window.push({ t: timestamp, lat: rawLat, lon: rawLon, acc: accuracy });
+                if (this.window.length > this.windowN) this.window.shift();
+
+                // 9. Net-Displacement Stationary Detection
+                if (!this.isStationary && this.window.length >= this.windowN) {
+                    const netDisp = this.getDistanceMeters(this.window[0].lat, this.window[0].lon, rawLat, rawLon);
+                    if (netDisp < Math.max(6.0, 1.5 * accuracy)) {
+                        this.isStationary = true;
+                        this.updateStationaryAnchorCentroid();
+                        this.leaveCount = 0;
+                    }
+                }
+
+                // 10. Displacement Heading with Immediate Reversal Override
+                const rawDispMeters = this.getDistanceMeters(this.lastAcceptedRaw.lat, this.lastAcceptedRaw.lon, rawLat, rawLon);
+                if (!this.isStationary && rawDispMeters >= Math.max(1.5, 0.5 * accuracy)) {
+                    const candidateBearing = this.computeRawAzimuth(this.lastAcceptedRaw.lat, this.lastAcceptedRaw.lon, rawLat, rawLon);
+                    const d = this.angleDiff(this.heading, candidateBearing);
+
+                    // Reversal override: allow immediate flip if confirmed motion
+                    const isConfirmedMotion = (this.v_filter > 0.8 || rawDispMeters > 2.0 * accuracy);
+                    if (Math.abs(d) >= this.REVERSAL_ANGLE && isConfirmedMotion) {
+                        this.heading = candidateBearing;
+                        this.pendingHeading = null;
+                    } else if (Math.abs(d) >= this.HYSTERESIS_ANGLE) {
+                        if (this.pendingHeading != null && Math.abs(this.angleDiff(this.pendingHeading, candidateBearing)) < this.HYSTERESIS_ANGLE) {
+                            this.heading = candidateBearing;
+                            this.pendingHeading = null;
+                        } else {
+                            this.pendingHeading = candidateBearing;
                         }
                     } else {
-                        this.stationaryStartTime = null;
+                        this.heading = candidateBearing;
+                        this.pendingHeading = null;
                     }
                 }
 
-                // Ignore tiny movements to prevent micro-stutters
-                if (dist < this.MIN_DISTANCE) return;
+                // 11. Target Coordinate Resolution
+                let targetLat, targetLon;
+                if (this.isStationary && this.stationaryAnchor) {
+                    targetLat = this.stationaryAnchor.lat;
+                    targetLon = this.stationaryAnchor.lon;
+                } else {
+                    targetLat = updLat.x;
+                    targetLon = updLon.x;
+                    this.stationaryAnchor = { lat: targetLat, lon: targetLon };
+                }
 
-                // Animate + rotate to exactly the new position (no lagging)
-                this.animateTo(newPos);
+                const snapAction = (isReconnect || isHardReacquire);
+                const newTarget = {
+                    lat: Math.round(targetLat * 1e6) / 1e6,
+                    lng: Math.round(targetLon * 1e6) / 1e6,
+                    heading: this.heading,
+                    timestamp,
+                    isReconnect: snapAction
+                };
+
+                this.lastAcceptedRaw = { lat: rawLat, lon: rawLon, t: timestamp, acc: accuracy };
+                this.lastAcceptedFiltered = { lat: targetLat, lon: targetLon, t: timestamp };
+                this.acceptedCount++;
+
+                // Add to live polyline trail
+                if (this.liveTrail && !this.isStationary) {
+                    this.liveTrail.addLatLng([newTarget.lat, newTarget.lng]);
+                    const pts = this.liveTrail.getLatLngs();
+                    if (pts.length > 60) pts.shift();
+                }
+
+                // 12. Visual Interpolation (Starts from marker's current on-screen location!)
+                this.animateTo(newTarget, dt_sec);
+
+                return {
+                    lat: newTarget.lat,
+                    lon: newTarget.lng,
+                    heading: this.heading,
+                    speed_kmh: (this.isStationary ? 0.0 : (this.v_filter * 3.6)).toFixed(1),
+                    isStationary: this.isStationary,
+                    state: this.isStationary ? 'STATIONARY' : 'MOVING'
+                };
             }
 
-            snapTo(pos) {
-                if (this.marker._icon) this.marker._icon.style.transition = 'none';
-                if (this.marker._shadow) this.marker._shadow.style.transition = 'none';
-                
-                this.marker.setLatLng([pos.lat, pos.lng]);
-                this.setMarkerRotation(pos.heading || 0);
-                this.lastValidPos = { ...pos };
-            }
-
-            animateTo(target) {
+            animateTo(target, dt_sec) {
                 if (this.animationId) cancelAnimationFrame(this.animationId);
 
-                const start = { ...this.lastValidPos };
+                // Start from WHERE THE MARKER CURRENTLY IS ON SCREEN (Fixes backward jumps)
+                const cur = this.marker.getLatLng();
+                const start = {
+                    lat: cur.lat,
+                    lng: cur.lng,
+                    heading: this._currentRotation
+                };
+
+                this.lastValidPos = { ...target };
                 const startTime = performance.now();
 
-                let dt_ms = target.timestamp - start.timestamp;
-                if (isNaN(dt_ms) || dt_ms <= 0) dt_ms = 1000; 
-                
-                // Better match the animation duration to the transmission rate for flawless continuous motion
-                // Increased max to 5000ms to prevent stop-and-go lag on slower update intervals
-                let duration = Math.max(100, Math.min(dt_ms, 5000));
+                // 85% Glide Duration
+                const duration = target.isReconnect ? 250 : Math.min(30000, Math.max(800, 0.85 * dt_sec * 1000));
+                // Rotate heading quickly within 900ms (not dragging over 30s)
+                const headingTime = Math.min(duration, 900);
 
                 const animate = (now) => {
-                    const progress = Math.min((now - startTime) / duration, 1);
-                    
-                    // 3. Spline-like trajectory: The Kalman filter above mathematically pulls 
-                    // the waypoints into a natural curve. We use linear time interpolation 
-                    // so the pointer glides continuously along this curve without stopping.
-                    const ease = progress; 
+                    const elapsed = now - startTime;
+                    const p = Math.min(elapsed / duration, 1.0);
 
-                    const lat = start.lat + (target.lat - start.lat) * ease;
-                    const lng = start.lng + (target.lng - start.lng) * ease;
-                    
+                    const lat = Math.round((start.lat + (target.lat - start.lat) * p) * 1e6) / 1e6;
+                    const lng = Math.round((start.lng + (target.lng - start.lng) * p) * 1e6) / 1e6;
+
                     if (this.marker._icon) this.marker._icon.style.transition = 'none';
                     if (this.marker._shadow) this.marker._shadow.style.transition = 'none';
-                    
+
                     this.marker.setLatLng([lat, lng]);
 
-                    if (start.heading !== undefined && target.heading !== undefined) {
-                        const heading = this.lerpAngle(start.heading, target.heading, ease);
-                        this.setMarkerRotation(heading);
-                    }
+                    const targetRot = this.lerpAngle(start.heading, target.heading, Math.min(elapsed / headingTime, 1.0));
+                    this.setMarkerRotation(targetRot);
 
-                    if (progress < 1) {
+                    if (p < 1.0) {
                         this.animationId = requestAnimationFrame(animate);
-                    } else {
-                        this.lastValidPos = { ...target };
                     }
                 };
 
                 this.animationId = requestAnimationFrame(animate);
             }
 
+            snapTo(pos) {
+                if (this.animationId) cancelAnimationFrame(this.animationId);
+                if (this.marker._icon) this.marker._icon.style.transition = 'none';
+                if (this.marker._shadow) this.marker._shadow.style.transition = 'none';
+
+                const lat = Math.round(pos.lat * 1e6) / 1e6;
+                const lng = Math.round(pos.lng * 1e6) / 1e6;
+
+                this.marker.setLatLng([lat, lng]);
+                this.setMarkerRotation(pos.heading || 0);
+                this.lastValidPos = { ...pos, lat, lng };
+            }
+
             setMarkerRotation(targetBearing) {
                 let diff = targetBearing - (this._currentRotation % 360);
                 if (diff > 180) diff -= 360;
                 else if (diff < -180) diff += 360;
-                
+
                 this._currentRotation += diff;
 
-                if (this.marker.getElement()) {
-                    // Update all possible rotation targets
-                    const svg = this.marker.getElement().querySelector('svg');
+                const elem = this.marker.getElement();
+                if (elem) {
+                    const svg = elem.querySelector('svg');
                     if (svg) {
                         svg.style.transform = `rotate(${this._currentRotation}deg)`;
                         svg.style.transformOrigin = 'center center';
@@ -559,49 +767,75 @@
                 }
             }
 
-            isValidPoint(lat, lng, accuracy, timestamp) {
-                if (isNaN(lat) || isNaN(lng)) return false;
-                if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
-                if (accuracy > 25) return false;
-                if (this.lastValidPos && timestamp < this.lastValidPos.timestamp) return false;
-                return true;
+            updateStationaryAnchorCentroid() {
+                if (this.window.length === 0) return;
+                let sumW = 0, sumLat = 0, sumLon = 0;
+
+                this.window.forEach(p => {
+                    const w = 1.0 / (1.0 + (p.acc * p.acc));
+                    sumW += w;
+                    sumLat += p.lat * w;
+                    sumLon += p.lon * w;
+                });
+
+                if (sumW > 0) {
+                    this.stationaryAnchor = {
+                        lat: sumLat / sumW,
+                        lon: sumLon / sumW
+                    };
+                }
             }
 
-            haversine(p1, p2) {
-                const R = 6371000;
-                const dLat = (p2.lat - p1.lat) * Math.PI / 180;
-                const dLng = (p2.lng - p1.lng) * Math.PI / 180;
-                const a =
-                    Math.sin(dLat / 2) ** 2 +
-                    Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
-                    Math.sin(dLng / 2) ** 2;
-                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            }
+            computeRawAzimuth(lat1, lon1, lat2, lon2) {
+                const toRad = (d) => (d * Math.PI) / 180.0;
+                const toDeg = (r) => (r * 180.0) / Math.PI;
 
-            calculateBearing(p1, p2) {
-                const dLng = (p2.lng - p1.lng) * Math.PI / 180;
-                const lat1 = p1.lat * Math.PI / 180;
-                const lat2 = p2.lat * Math.PI / 180;
-                const y = Math.sin(dLng) * Math.cos(lat2);
-                const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-                return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+                const dLon = toRad(lon2 - lon1);
+                const phi1 = toRad(lat1);
+                const phi2 = toRad(lat2);
+
+                const y = Math.sin(dLon) * Math.cos(phi2);
+                const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLon);
+
+                return (toDeg(Math.atan2(y, x)) + 360.0) % 360.0;
             }
 
             angleDiff(a, b) {
-                return ((b - a + 540) % 360) - 180;
+                return ((b - a + 540.0) % 360.0) - 180.0;
             }
 
             lerpAngle(a, b, t) {
                 return a + this.angleDiff(a, b) * t;
             }
 
+            getDistanceMeters(lat1, lon1, lat2, lon2) {
+                const R = 6371000.0;
+                const dLat = ((lat2 - lat1) * Math.PI) / 180.0;
+                const dLon = ((lon2 - lon1) * Math.PI) / 180.0;
+                const a = Math.sin(dLat / 2) ** 2 +
+                          Math.cos((lat1 * Math.PI) / 180.0) * Math.cos((lat2 * Math.PI) / 180.0) *
+                          Math.sin(dLon / 2) ** 2;
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            }
+
+            destroy() {
+                if (this.animationId) cancelAnimationFrame(this.animationId);
+                if (this.liveTrail && this.map.hasLayer(this.liveTrail)) {
+                    this.map.removeLayer(this.liveTrail);
+                }
+            }
+
             onDeviceConnected() {
-                this.isFirstFix = true;
+                this.acceptedCount = 0;
+                this.measuredCadence = null;
+                this.lastGapDt = null;
+                this.rejectStreak = 0;
                 this.isStationary = false;
-                this.stationaryStartTime = null;
+                this.window = [];
+                if (this.liveTrail) this.liveTrail.setLatLngs([]);
             }
         }
-        // ========================================================
+        // ==========================================================
 
         // Initialize WebSockets safely
         try {
@@ -678,15 +912,16 @@
             }
 
             // Route update to the premium tracker
-            tracker.onGpsUpdate(data);
+            const tracked = tracker.onGpsUpdate(data);
+            if (!tracked) return; // Discarded as outlier or invalid fix
             
             // Dynamically update Table and Details if visible
             const lastSeenFormatted = formatDatePremium(data.timestamp);
             
-            // 1. Update Table Location (Lat, Lon)
+            // 1. Update Table Location (Lat, Lon) with Kalman/Anchor tracked coordinates
             const tableLocContainer = document.getElementById(`loc-table-container-${data.id}`);
             if(tableLocContainer) {
-                tableLocContainer.textContent = `${data.lat.toFixed(5)}, ${data.lon.toFixed(5)}`;
+                tableLocContainer.textContent = `${tracked.lat.toFixed(5)}, ${tracked.lon.toFixed(5)}`;
             }
             
             // 2. Update Table Status & Network to Online
@@ -724,19 +959,19 @@
                 }
             }
             
-            // 4. Update Table Last Seen (Address • Time)
+            // 4. Update Table Last Seen (Address • Time) using tracked coordinates
             const tableLastSeenTime = document.getElementById(`last-seen-time-${data.id}`);
             if(tableLastSeenTime) tableLastSeenTime.textContent = lastSeenFormatted;
             
             const tableLastSeenLoc = document.getElementById(`last-seen-loc-${data.id}`);
             if(tableLastSeenLoc) {
                 tableLastSeenLoc.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Locating...`;
-                getAddressFromCoords(data.lat, data.lon, `last-seen-loc-${data.id}`);
+                getAddressFromCoords(tracked.lat, tracked.lon, `last-seen-loc-${data.id}`);
             } else {
                 const tableLastSeenCell = document.getElementById(`last-seen-table-${data.id}`);
                 if(tableLastSeenCell) {
                     tableLastSeenCell.innerHTML = `<span id="last-seen-loc-${data.id}"><i class="fa-solid fa-circle-notch fa-spin"></i> Locating...</span> &bull; <span id="last-seen-time-${data.id}">${lastSeenFormatted}</span>`;
-                    getAddressFromCoords(data.lat, data.lon, `last-seen-loc-${data.id}`);
+                    getAddressFromCoords(tracked.lat, tracked.lon, `last-seen-loc-${data.id}`);
                 }
             }
             
@@ -750,7 +985,7 @@
                 }
 
                 const detailsLoc = document.getElementById('details-location');
-                if(detailsLoc) detailsLoc.textContent = `${data.lat.toFixed(5)}, ${data.lon.toFixed(5)}`;
+                if(detailsLoc) detailsLoc.textContent = `${tracked.lat.toFixed(5)}, ${tracked.lon.toFixed(5)}`;
                 
                 const detailsLastSeenTime = document.getElementById('details-last-seen-time');
                 if(detailsLastSeenTime) detailsLastSeenTime.textContent = lastSeenFormatted;
@@ -758,12 +993,12 @@
                 const detailsLastSeenLoc = document.getElementById('details-last-seen-loc');
                 if(detailsLastSeenLoc) {
                     detailsLastSeenLoc.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Locating...`;
-                    getAddressFromCoords(data.lat, data.lon, 'details-last-seen-loc');
+                    getAddressFromCoords(tracked.lat, tracked.lon, 'details-last-seen-loc');
                 } else {
                     const detailsLastSeen = document.getElementById('details-last-seen');
                     if(detailsLastSeen) {
                         detailsLastSeen.innerHTML = `<span id="details-last-seen-loc"><i class="fa-solid fa-circle-notch fa-spin"></i> Locating...</span> &bull; <span id="details-last-seen-time">${lastSeenFormatted}</span>`;
-                        getAddressFromCoords(data.lat, data.lon, 'details-last-seen-loc');
+                        getAddressFromCoords(tracked.lat, tracked.lon, 'details-last-seen-loc');
                     }
                 }
 
@@ -1061,6 +1296,13 @@
                             window.deviceMarkers[device.device_uid].setLatLng([renderLat, renderLon]);
                             window.deviceMarkers[device.device_uid].setIcon(getMapIcon(device.isOnline));
                         }
+
+                        if (!window.deviceTrackers) window.deviceTrackers = {};
+                        if (!window.deviceTrackers[device.device_uid]) {
+                            const tracker = new SmoothLeafletTracker(map, window.deviceMarkers[device.device_uid]);
+                            window.deviceTrackers[device.device_uid] = tracker;
+                            tracker.snapTo({ lat: renderLat, lng: renderLon, heading: 0, timestamp: Date.now() });
+                        }
                         
                         // Historical track rendering omitted by configuration
                     }
@@ -1094,6 +1336,10 @@
                     if (window.deviceMarkers && window.deviceMarkers[deviceToDelete]) {
                         map.removeLayer(window.deviceMarkers[deviceToDelete]);
                         delete window.deviceMarkers[deviceToDelete];
+                    }
+                    if (window.deviceTrackers && window.deviceTrackers[deviceToDelete]) {
+                        window.deviceTrackers[deviceToDelete].destroy();
+                        delete window.deviceTrackers[deviceToDelete];
                     }
                     if (document.getElementById('device-details-panel').classList.contains('active')) {
                         document.getElementById('device-details-panel').classList.remove('active');
@@ -1770,11 +2016,18 @@
                     currentDateKey: 'ALL'
                 };
 
-                // Hide ALL other device fleet markers so ONLY selected device's history is shown
+                // Hide ALL other device fleet markers & live trails so ONLY selected device's history is shown
                 if (window.deviceMarkers) {
                     Object.keys(window.deviceMarkers).forEach(deviceId => {
                         if (window.deviceMarkers[deviceId] && map.hasLayer(window.deviceMarkers[deviceId])) {
                             map.removeLayer(window.deviceMarkers[deviceId]);
+                        }
+                    });
+                }
+                if (window.deviceTrackers) {
+                    Object.values(window.deviceTrackers).forEach(tracker => {
+                        if (tracker.liveTrail && map.hasLayer(tracker.liveTrail)) {
+                            map.removeLayer(tracker.liveTrail);
                         }
                     });
                 }
@@ -2176,11 +2429,18 @@
                 hStats.style.display = 'none';
             }
 
-            // Restore all device fleet markers on the map
+            // Restore all device fleet markers & live trails on the map
             if (window.deviceMarkers) {
                 Object.values(window.deviceMarkers).forEach(marker => {
                     if (marker && !map.hasLayer(marker)) {
                         marker.addTo(map);
+                    }
+                });
+            }
+            if (window.deviceTrackers) {
+                Object.values(window.deviceTrackers).forEach(tracker => {
+                    if (tracker.liveTrail && !map.hasLayer(tracker.liveTrail)) {
+                        tracker.liveTrail.addTo(map);
                     }
                 });
             }
