@@ -1579,6 +1579,19 @@
                 
                 historyPanel.classList.add('active');
                 
+                if (!currentHistoryData) {
+                    const banner = document.getElementById('history-track-banner');
+                    if (banner) {
+                        banner.classList.remove('active');
+                        banner.style.display = 'none';
+                    }
+                    const hStats = document.getElementById('history-stats');
+                    if (hStats) {
+                        hStats.classList.remove('active');
+                        hStats.style.display = 'none';
+                    }
+                }
+                
                 const currentVal = historyDeviceSelect.value || activeDeviceUid;
                 // Populate the dropdown with devices
                 historyDeviceSelect.innerHTML = '<option value="">-- Choose a Device --</option>';
@@ -2000,6 +2013,7 @@
             // Update Floating Banner HUD
             const banner = document.getElementById('history-track-banner');
             if (banner) {
+                banner.classList.add('active');
                 banner.style.display = 'flex';
                 document.getElementById('htb-device-name').textContent = uid;
                 
@@ -2015,6 +2029,7 @@
                 const noteEl = document.getElementById('htb-inactive-note');
                 const textEl = document.getElementById('htb-inactive-text');
                 if (noteEl && textEl) {
+                    noteEl.classList.add('active');
                     noteEl.style.display = 'flex';
                     if (isSingleDate) {
                         textEl.innerHTML = `Displaying strictly <b>${formatLocalDateLabel(targetDateKey)}</b> (${logsToDraw.length} points • ${firstTimeFormatted.split(',')[1]} to ${lastTimeFormatted.split(',')[1]}). Zero data from other dates displayed.`;
@@ -2106,7 +2121,11 @@
 
             breakdownHtml += `</div>`;
             breakdownContainer.innerHTML = breakdownHtml;
-            document.getElementById('history-stats').style.display = 'block';
+            const hStats = document.getElementById('history-stats');
+            if (hStats) {
+                hStats.classList.add('active');
+                hStats.style.display = 'block';
+            }
         }
 
         function toggleHtbCollapse() {
@@ -2140,10 +2159,22 @@
             currentHistoryData = null;
 
             const banner = document.getElementById('history-track-banner');
-            if (banner) banner.style.display = 'none';
+            if (banner) {
+                banner.classList.remove('active');
+                banner.style.display = 'none';
+            }
+
+            const noteEl = document.getElementById('htb-inactive-note');
+            if (noteEl) {
+                noteEl.classList.remove('active');
+                noteEl.style.display = 'none';
+            }
 
             const hStats = document.getElementById('history-stats');
-            if (hStats) hStats.style.display = 'none';
+            if (hStats) {
+                hStats.classList.remove('active');
+                hStats.style.display = 'none';
+            }
 
             // Restore all device fleet markers on the map
             if (window.deviceMarkers) {
@@ -2253,3 +2284,6 @@
                 viewLogs(uid);
             }
         });
+
+        // Ensure history banner and stats are strictly hidden by default on initial page load
+        clearHistoryTrack();

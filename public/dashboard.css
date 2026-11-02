@@ -930,6 +930,14 @@
             padding: 16px;
         }
 
+        #history-stats {
+            display: none;
+        }
+
+        #history-stats.active {
+            display: block !important;
+        }
+
         .detail-row {
             display: flex;
             justify-content: space-between;
@@ -1297,11 +1305,15 @@
             z-index: 1050;
             padding: 14px 18px;
             color: #f8fafc;
-            display: flex;
+            display: none; /* Strictly hidden by default until history track is loaded */
             flex-direction: column;
             gap: 10px;
             animation: slideDownBanner 0.35s cubic-bezier(0.16, 1, 0.3, 1);
             transition: all 0.3s ease;
+        }
+
+        .history-track-banner.active {
+            display: flex !important;
         }
 
         @media (min-width: 901px) {
@@ -1546,7 +1558,7 @@
         }
 
         .htb-inactive-note {
-            display: flex;
+            display: none;
             align-items: center;
             gap: 8px;
             font-size: 0.76rem;
@@ -1556,6 +1568,10 @@
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.05);
             line-height: 1.4;
+        }
+
+        .htb-inactive-note.active {
+            display: flex !important;
         }
 
         .device-table-row {

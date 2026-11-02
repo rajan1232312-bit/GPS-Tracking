@@ -233,7 +233,7 @@
                 <button class="submit-btn" id="btn-clear-history" style="background: rgba(255,255,255,0.05); padding: 12px; font-size: 0.95rem;">Clear Map</button>
             </div>
             
-            <div class="detail-card" id="history-stats" style="display: none;">
+            <div class="detail-card" id="history-stats">
                 <h3 style="margin-top:0; font-size: 14px; margin-bottom: 10px;">Trip Statistics</h3>
                 <div class="detail-row"><span class="detail-label">Data Points</span><span class="detail-val" id="hist-points">0</span></div>
                 <div class="detail-row"><span class="detail-label">Distance (approx)</span><span class="detail-val" id="hist-distance">0 km</span></div>
@@ -295,7 +295,7 @@
     <div id="map"></div>
 
     <!-- Floating History Control & Allocated Dates HUD -->
-    <div id="history-track-banner" class="history-track-banner" style="display: none;">
+    <div id="history-track-banner" class="history-track-banner">
         <div class="htb-header">
             <div class="htb-title-group">
                 <span class="htb-badge"><i class="fa-solid fa-route"></i> HISTORY TRACK</span>
@@ -339,7 +339,7 @@
                     <span class="htb-stat-val" id="htb-speed">0.0 km/h</span>
                 </div>
             </div>
-            <div class="htb-inactive-note" id="htb-inactive-note" style="display: none;">
+            <div class="htb-inactive-note" id="htb-inactive-note">
                 <i class="fa-solid fa-circle-info" style="color: #f59e0b; flex-shrink: 0;"></i>
                 <span id="htb-inactive-text"></span>
             </div>
