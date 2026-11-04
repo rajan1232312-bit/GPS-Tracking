@@ -432,12 +432,12 @@ app.use((req, res, next) => {
 
 app.use(express.static('public', {
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html')) {
+        if (filePath.endsWith('.html') || filePath.endsWith('.css') || filePath.endsWith('.js')) {
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
         } else {
-            // Static assets (CSS, JS, Fonts, Images) safely cached with validation
+            // Static assets (Fonts, Images) safely cached with validation
             res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
         }
     }
