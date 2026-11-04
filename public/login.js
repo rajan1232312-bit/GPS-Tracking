@@ -285,11 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     if (loginForm) loginForm.addEventListener('submit', handleLoginSubmit);
 
-    // 4. Check URL status parameters (e.g., unauthorized redirect or registered notice)
+    // 4. Check URL status parameters (e.g., registered notice)
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('error') === 'unauthorized') {
-        showAlert('Please sign in with your credentials to access the tracking dashboard.', 'warning');
-    } else if (urlParams.get('registered') === '1') {
+    if (urlParams.get('registered') === '1') {
         showAlert('Registration successful! You may now sign in.', 'success');
     }
 
