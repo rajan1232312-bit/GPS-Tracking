@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const db = require('./db');
+const auth = require('./auth');
 
 // Utility: Calculate distance between two coordinates in meters (Haversine formula)
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -370,9 +371,9 @@ const CSP_POLICY = [
     "frame-ancestors 'self'",
     "object-src 'none'",
     "script-src 'self'",
-    "style-src 'self' https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
     "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-    "img-src 'self' https://mt0.google.com https://mt1.google.com https://mt2.google.com https://mt3.google.com https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://a.tile.openstreetmap.fr https://b.tile.openstreetmap.fr https://c.tile.openstreetmap.fr https://server.arcgisonline.com https://troopcomfortslimited.co.in",
+    "img-src 'self' data: https://mt0.google.com https://mt1.google.com https://mt2.google.com https://mt3.google.com https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://a.tile.openstreetmap.fr https://b.tile.openstreetmap.fr https://c.tile.openstreetmap.fr https://server.arcgisonline.com https://troopcomfortslimited.co.in",
     "connect-src 'self' https://nominatim.openstreetmap.org",
     "upgrade-insecure-requests"
 ].join('; ');
@@ -411,6 +412,18 @@ http.ServerResponse.prototype.writeHead = function(statusCode, ...args) {
     return origWriteHead.apply(this, [statusCode, ...args]);
 };
 
+// Route Guard: Protect authenticated views from unauthenticated direct navigation
+const protectedPages = ['/dashboard.html', '/logs.html', '/vitals.html'];
+app.use((req, res, next) => {
+    if (protectedPages.includes(req.path)) {
+        const session = auth.verifySessionFromRequest(req);
+        if (!session) {
+            return res.redirect('/index.html?error=unauthorized');
+        }
+    }
+    next();
+});
+
 app.use(express.static('public', {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.html')) {
@@ -424,6 +437,226 @@ app.use(express.static('public', {
     }
 }));
 app.use(express.json({ limit: '10mb' }));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTHENTICATION & SECURITY ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1. Asymmetric Public Key Retrieval for In-Flight Encryption
+app.get('/api/auth/public-key', (req, res) => {
+    res.json(auth.getPublicKeyInfo());
+});
+
+// 2. CAPTCHA Challenge Generation (SVG + Single-Use ID)
+app.get('/api/auth/captcha', (req, res) => {
+    const captcha = auth.createCaptcha();
+    res.json({
+        success: true,
+        captchaId: captcha.captchaId,
+        captchaSvg: captcha.svg
+    });
+});
+
+// 3. Authenticated Login with RSA-OAEP + AES-256 Decryption, CAPTCHA, and Scrypt
+app.post('/api/auth/login', (req, res) => {
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
+    if (auth.isIpRateLimited(clientIp)) {
+        return res.status(429).json({
+            success: false,
+            error: 'Too many login attempts. Please wait 5 minutes and try again.',
+            code: 'RATE_LIMITED'
+        });
+    }
+
+    let payload;
+    try {
+        // Enforce hybrid RSA-OAEP + AES-256-GCM payload decryption with anti-replay validation
+        payload = auth.decryptPayload(req.body);
+    } catch (err) {
+        console.warn(`[Auth Warning] Decryption validation failed from ${clientIp}: ${err.message}`);
+        return res.status(400).json({
+            success: false,
+            error: err.message || 'Cryptographic payload validation failed.',
+            code: 'ENCRYPTION_VALIDATION_FAILED'
+        });
+    }
+
+    const { username, password, captchaId, captchaSolution } = payload;
+
+    // A. Validate CAPTCHA
+    const captchaResult = auth.verifyCaptcha(captchaId, captchaSolution);
+    if (!captchaResult.valid) {
+        return res.status(400).json({
+            success: false,
+            error: captchaResult.message,
+            code: 'INVALID_CAPTCHA'
+        });
+    }
+
+    // B. Validate credentials format
+    if (!username || !password) {
+        return res.status(400).json({
+            success: false,
+            error: 'Username and password are required.',
+            code: 'MISSING_CREDENTIALS'
+        });
+    }
+
+    // C. Check account lockout status
+    const lockStatus = auth.isUserLocked(username);
+    if (lockStatus.locked) {
+        return res.status(423).json({
+            success: false,
+            error: `Account is temporarily locked due to repeated failed attempts. Please try again in ${lockStatus.remainingMinutes} minute(s).`,
+            code: 'ACCOUNT_LOCKED'
+        });
+    }
+
+    // D. Fetch user from database
+    db.get('SELECT * FROM users WHERE LOWER(username) = LOWER(?)', [username.trim()], (err, user) => {
+        if (err) {
+            console.error('[Auth Error] Database error during login:', err);
+            return res.status(500).json({ success: false, error: 'Internal authentication error.' });
+        }
+
+        if (!user) {
+            auth.recordIpAttempt(clientIp, false);
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid username or password.',
+                code: 'INVALID_CREDENTIALS'
+            });
+        }
+
+        // E. Verify password hash using scrypt + salt with constant-time equality
+        const isValid = auth.verifyPassword(password, user.password_hash, user.salt);
+        if (!isValid) {
+            auth.recordIpAttempt(clientIp, false);
+            auth.recordUserFailedAttempt(user.username);
+            const updatedLock = auth.isUserLocked(user.username);
+            if (updatedLock.locked) {
+                return res.status(423).json({
+                    success: false,
+                    error: `Too many failed attempts. Account locked for ${updatedLock.remainingMinutes} minutes.`,
+                    code: 'ACCOUNT_LOCKED'
+                });
+            }
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid username or password.',
+                code: 'INVALID_CREDENTIALS'
+            });
+        }
+
+        // Authentication Success
+        auth.recordIpAttempt(clientIp, true);
+        auth.clearUserLockout(user.username);
+
+        db.run('UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
+
+        const session = auth.createSession(user);
+
+        // Set HttpOnly, SameSite=Strict security cookie
+        const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+        const cookieFlags = [
+            `auth_session=${encodeURIComponent(session.signedCookie)}`,
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Strict',
+            `Max-Age=${24 * 3600}`
+        ];
+        if (isSecure) cookieFlags.push('Secure');
+        res.setHeader('Set-Cookie', cookieFlags.join('; '));
+
+        return res.json({
+            success: true,
+            message: 'Authentication successful.',
+            token: session.signedCookie,
+            user: {
+                id: user.id,
+                username: user.username,
+                fullname: user.fullname,
+                email: user.email,
+                role: user.role
+            }
+        });
+    });
+});
+
+// 4. User Registration (Supports Encrypted Payload + Scrypt Hashing)
+app.post('/api/auth/register', (req, res) => {
+    let payload = req.body;
+    if (payload.encryptedKey && payload.iv && payload.ciphertext && payload.tag) {
+        try {
+            payload = auth.decryptPayload(payload);
+        } catch (e) {
+            return res.status(400).json({ success: false, error: 'Decryption failed: ' + e.message });
+        }
+    }
+
+    const { fullname, email, role, userid, username, password } = payload;
+    const finalUsername = (userid || username || '').trim();
+
+    if (!finalUsername || finalUsername.length < 3) {
+        return res.status(400).json({ success: false, error: 'User ID must be at least 3 characters long.' });
+    }
+    if (!password || password.length < 8) {
+        return res.status(400).json({ success: false, error: 'Password must be at least 8 characters long.' });
+    }
+
+    db.get('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [finalUsername], (err, existing) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (existing) {
+            return res.status(409).json({ success: false, error: 'User ID is already taken. Please choose another.' });
+        }
+
+        const { hash, salt } = auth.hashPassword(password);
+        const finalRole = ['admin', 'manager', 'user'].includes(String(role).toLowerCase()) ? String(role).toLowerCase() : 'user';
+
+        db.run(
+            'INSERT INTO users (username, password_hash, salt, fullname, email, role) VALUES (?, ?, ?, ?, ?, ?)',
+            [finalUsername, hash, salt, fullname || finalUsername, email || '', finalRole],
+            function(insertErr) {
+                if (insertErr) {
+                    return res.status(500).json({ success: false, error: 'Database error during registration: ' + insertErr.message });
+                }
+                res.status(201).json({
+                    success: true,
+                    message: 'Account successfully registered. You may now log in.'
+                });
+            }
+        );
+    });
+});
+
+// 5. Current Session Verification
+app.get('/api/auth/me', (req, res) => {
+    const session = auth.verifySessionFromRequest(req);
+    if (!session) {
+        return res.json({ authenticated: false });
+    }
+    res.json({
+        authenticated: true,
+        user: {
+            id: session.userId,
+            username: session.username,
+            fullname: session.fullname,
+            email: session.email,
+            role: session.role
+        }
+    });
+});
+
+// 6. Logout and Session Invalidation
+app.all('/api/auth/logout', (req, res) => {
+    auth.destroySessionFromRequest(req);
+    res.setHeader('Set-Cookie', 'auth_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');
+    if (req.method === 'GET' && !req.headers.accept?.includes('application/json')) {
+        return res.redirect('/index.html');
+    }
+    res.json({ success: true, message: 'Logged out successfully.' });
+});
 
 // Hardware HTTP Tracker Endpoint (Unified GPS + Vitals) — Supports single packet, single-device batch, or multi-device gateway batch
 app.post('/api/tracker/update', (req, res) => {

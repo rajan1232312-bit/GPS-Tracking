@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const { hashPassword } = require('./auth');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,8 +11,22 @@ const pool = new Pool({
 
 pool.on('error', (err) => console.error('Unexpected error on idle client', err));
 
-// Create tables with all new hardware fields
+// Create tables with all new hardware fields and user authentication
 const initQuery = `
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        fullname TEXT,
+        email TEXT,
+        role TEXT DEFAULT 'user',
+        failed_attempts INTEGER DEFAULT 0,
+        locked_until TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS devices (
         id SERIAL PRIMARY KEY,
         device_uid TEXT UNIQUE NOT NULL,
@@ -113,9 +128,11 @@ if (process.env.DATABASE_URL) {
                 CREATE INDEX IF NOT EXISTS idx_vitals_device_time ON vitals_logs (device_uid, timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_devices_device_uid ON devices (device_uid);
                 CREATE INDEX IF NOT EXISTS idx_devices_status ON devices (status);
+                CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
             `);
         }).then(() => {
-            console.log('PostgreSQL performance indexes verified (idx_telemetry_device_time, idx_vitals_device_time, idx_devices_device_uid, idx_devices_status).');
+            console.log('PostgreSQL performance indexes verified.');
+            seedAdminUser();
         }).catch(err => console.error('Migration / index notice:', err));
     }).catch(err => console.error('Error initializing PostgreSQL tables:', err));
 } else {
@@ -127,6 +144,45 @@ const convertQuery = (query) => {
     let index = 1;
     return query.replace(/\?/g, () => `$${index++}`);
 };
+
+function seedAdminUser() {
+    const adminUser = process.env.ADMIN_USERNAME || 'admin';
+    const adminPass = process.env.ADMIN_PASSWORD || 'Admin@123';
+    const { hash, salt } = hashPassword(adminPass);
+
+    if (process.env.DATABASE_URL) {
+        pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [adminUser], (err, res) => {
+            if (!err && (!res || res.rows.length === 0)) {
+                pool.query(
+                    'INSERT INTO users (username, password_hash, salt, fullname, email, role) VALUES ($1, $2, $3, $4, $5, $6)',
+                    [adminUser, hash, salt, 'System Administrator', 'admin@tcl.gov.in', 'admin'],
+                    (err) => {
+                        if (!err) console.log(`[Auth] Default admin account '${adminUser}' seeded successfully in PostgreSQL.`);
+                        else console.error('[Auth] Error seeding admin in PostgreSQL:', err);
+                    }
+                );
+            }
+        });
+    } else {
+        const exists = memoryStore.users.some(u => u.username.toLowerCase() === adminUser.toLowerCase());
+        if (!exists) {
+            memoryStore.users.push({
+                id: 1,
+                username: adminUser,
+                password_hash: hash,
+                salt: salt,
+                fullname: 'System Administrator',
+                email: 'admin@tcl.gov.in',
+                role: 'admin',
+                failed_attempts: 0,
+                locked_until: null,
+                created_at: new Date().toISOString(),
+                last_login: null
+            });
+            console.log(`[Auth] Default admin account '${adminUser}' seeded successfully in memory.`);
+        }
+    }
+}
 
 // In-memory store fallback for local development (synchronized with live production data)
 let defaultDevices = [
@@ -156,11 +212,16 @@ try {
 }
 
 const memoryStore = {
+    users: [],
     devices: defaultDevices,
     telemetry_logs: defaultLogs,
     vitals_logs: [],
     nextId: 2000
 };
+
+if (!process.env.DATABASE_URL) {
+    seedAdminUser();
+}
 
 const db = {
     run: (query, params = [], callback) => {
@@ -262,6 +323,48 @@ const db = {
                     else if (cleanQuery.includes('TYPE = ?')) dev.type = params[1] || params[0];
                 }
             }
+        } else if (cleanQuery.startsWith('INSERT INTO USERS')) {
+            const [username, password_hash, salt, fullname, email, role] = params;
+            const exists = memoryStore.users.some(u => u.username.toLowerCase() === String(username).toLowerCase());
+            if (exists) { if (callback) return callback.call(context, new Error('UNIQUE constraint failed')); return; }
+            const newUser = {
+                id: context.lastID,
+                username,
+                password_hash,
+                salt,
+                fullname: fullname || username,
+                email: email || '',
+                role: role || 'user',
+                failed_attempts: 0,
+                locked_until: null,
+                created_at: new Date().toISOString(),
+                last_login: null
+            };
+            memoryStore.users.push(newUser);
+        } else if (cleanQuery.startsWith('UPDATE USERS')) {
+            if (cleanQuery.includes('FAILED_ATTEMPTS = 0')) {
+                const id = params[params.length - 1];
+                const user = memoryStore.users.find(u => u.id === Number(id) || u.username.toLowerCase() === String(id).toLowerCase());
+                if (user) {
+                    user.failed_attempts = 0;
+                    user.locked_until = null;
+                    user.last_login = new Date().toISOString();
+                }
+            } else if (cleanQuery.includes('FAILED_ATTEMPTS = ?')) {
+                const target = params[2];
+                const user = memoryStore.users.find(u => u.id === Number(target) || u.username.toLowerCase() === String(target).toLowerCase());
+                if (user) {
+                    user.failed_attempts = params[0];
+                    user.locked_until = params[1];
+                }
+            } else if (cleanQuery.includes('PASSWORD_HASH = ?')) {
+                const target = params[2];
+                const user = memoryStore.users.find(u => u.id === Number(target) || u.username.toLowerCase() === String(target).toLowerCase());
+                if (user) {
+                    user.password_hash = params[0];
+                    user.salt = params[1];
+                }
+            }
         } else if (cleanQuery.startsWith('DELETE FROM DEVICES')) {
             const uid = params[0];
             memoryStore.devices = memoryStore.devices.filter(d => d.device_uid !== uid);
@@ -283,7 +386,16 @@ const db = {
         const cleanQuery = query.trim().toUpperCase();
         let result = null;
 
-        if (cleanQuery.includes('FROM DEVICES') && (cleanQuery.includes('DEVICE_UID = ?') || cleanQuery.includes('NAME = ?'))) {
+        if (cleanQuery.includes('FROM USERS') && (cleanQuery.includes('USERNAME = ?') || cleanQuery.includes('LOWER(USERNAME) = LOWER(?)'))) {
+            const username = params[0];
+            result = memoryStore.users.find(u => u.username.toLowerCase() === String(username).toLowerCase()) || null;
+        } else if (cleanQuery.includes('FROM USERS') && cleanQuery.includes('ID = ?')) {
+            const id = params[0];
+            result = memoryStore.users.find(u => u.id === Number(id)) || null;
+        } else if (cleanQuery.includes('FROM USERS') && cleanQuery.includes('EMAIL = ?')) {
+            const email = params[0];
+            result = memoryStore.users.find(u => u.email.toLowerCase() === String(email).toLowerCase()) || null;
+        } else if (cleanQuery.includes('FROM DEVICES') && (cleanQuery.includes('DEVICE_UID = ?') || cleanQuery.includes('NAME = ?'))) {
             const uid = params[0];
             result = memoryStore.devices.find(d => (d.device_uid === uid || d.name === uid) && d.status === 'Active') || null;
         } else if (cleanQuery.includes('COUNT(*)') && cleanQuery.includes('FROM TELEMETRY_LOGS')) {
@@ -314,7 +426,17 @@ const db = {
         const cleanQuery = query.trim().toUpperCase();
         let rows = [];
 
-        if (cleanQuery.includes('FROM DEVICES') && cleanQuery.includes('WHERE')) {
+        if (cleanQuery.includes('FROM USERS')) {
+            rows = memoryStore.users.map(u => ({
+                id: u.id,
+                username: u.username,
+                fullname: u.fullname,
+                email: u.email,
+                role: u.role,
+                created_at: u.created_at,
+                last_login: u.last_login
+            }));
+        } else if (cleanQuery.includes('FROM DEVICES') && cleanQuery.includes('WHERE')) {
             rows = memoryStore.devices.filter(d => {
                 if (cleanQuery.includes('STATUS =') && d.status !== 'Active') return false;
                 if (cleanQuery.includes('IN (')) {

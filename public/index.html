@@ -30,6 +30,23 @@
                 <img src="https://troopcomfortslimited.co.in/wp-content/uploads/2025/03/tclLogo.png" alt="TCL Logo" class="tcl-logo" />
                 <h1>Welcome Back</h1>
                 <p>Log in to access your dashboard</p>
+                <div class="encryption-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span>RSA-2048 & AES-256 Encrypted Login</span>
+                </div>
+            </div>
+
+            <!-- Dynamic Feedback & Security Alert Banner -->
+            <div id="login-alert" class="login-alert" style="display: none;" role="alert">
+                <svg id="alert-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span id="alert-message"></span>
             </div>
 
             <form id="login-form">
@@ -40,7 +57,7 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 8px;">
+                <div class="form-group" style="margin-bottom: 12px;">
                     <label for="password">Password</label>
                     <div class="input-wrapper">
                         <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password" style="padding-right: 48px;">
@@ -56,12 +73,34 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit">
-                    Sign In
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Professional Security Verification CAPTCHA -->
+                <div class="form-group captcha-group">
+                    <div class="captcha-label-row">
+                        <label for="captcha-input">Security Verification</label>
+                        <span class="captcha-subtext">Case-insensitive</span>
+                    </div>
+                    <div class="captcha-box">
+                        <div class="captcha-preview" id="captcha-preview" title="CAPTCHA challenge">
+                            <span class="captcha-loading">Loading challenge...</span>
+                        </div>
+                        <button type="button" class="captcha-refresh-btn" id="captcha-refresh-btn" aria-label="Refresh verification challenge" title="Get a new verification challenge">
+                            <svg id="refresh-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="input-wrapper">
+                        <input type="text" id="captcha-input" placeholder="Type characters shown above" required autocomplete="off" maxlength="8" spellcheck="false" autocapitalize="characters">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btn-submit">
+                    <span id="btn-submit-text">Sign In</span>
+                    <svg id="btn-submit-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
+                    <div id="btn-submit-spinner" class="btn-spinner" style="display: none;"></div>
                 </button>
             </form>
 

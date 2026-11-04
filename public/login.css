@@ -381,3 +381,160 @@
             width: 20px;
             height: 20px;
         }
+
+        /* ─────────────────────────────────────────────────────────────────────
+           SECURITY, CAPTCHA, & LOGIN ENCRYPTION STYLES
+           ───────────────────────────────────────────────────────────────────── */
+        .login-alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            animation: slideInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            font-weight: 500;
+        }
+
+        .login-alert.alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+        }
+
+        .login-alert.alert-success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+        }
+
+        .login-alert.alert-warning {
+            background-color: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #b45309;
+        }
+
+        .login-alert svg {
+            flex-shrink: 0;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Encryption Status Badge */
+        .encryption-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: rgba(23, 23, 23, 0.05);
+            border: 1px solid rgba(23, 23, 23, 0.08);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #404040;
+            margin-top: 10px;
+        }
+
+        .encryption-badge svg {
+            stroke: #16a34a;
+        }
+
+        /* Security CAPTCHA Styling */
+        .captcha-group {
+            margin-bottom: 20px;
+        }
+
+        .captcha-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .captcha-subtext {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .captcha-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            background: #111827;
+            padding: 6px;
+            border-radius: 14px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .captcha-preview {
+            flex: 1;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        .captcha-preview svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .captcha-loading {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+        .captcha-refresh-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .captcha-refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .captcha-refresh-btn.rotating svg {
+            animation: spin 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Submit Button Spinner */
+        .btn-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(23, 23, 23, 0.25);
+            border-top-color: var(--dark-btn);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }

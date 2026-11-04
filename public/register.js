@@ -83,12 +83,120 @@ document.querySelectorAll('.custom-select').forEach(wrapper => {
             }
         }
 
+        function showRegisterAlert(msg, type = 'error') {
+            const box = document.getElementById('register-alert');
+            const text = document.getElementById('register-alert-message');
+            if (box && text) {
+                box.className = `login-alert alert-${type}`;
+                text.textContent = msg;
+                box.style.display = 'flex';
+            }
+        }
+
+        async function fetchServerPublicKey() {
+            const res = await fetch('/api/auth/public-key', { cache: 'no-store' });
+            if (!res.ok) throw new Error('Cannot load encryption keys');
+            const data = await res.json();
+            const b64 = data.publicKey.replace(/-----BEGIN [A-Z ]+-----/g, '').replace(/-----END [A-Z ]+-----/g, '').replace(/[\r\n\s]/g, '');
+            const str = window.atob(b64);
+            const buf = new Uint8Array(str.length);
+            for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
+            const key = await window.crypto.subtle.importKey('spki', buf.buffer, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']);
+            return { key, keyId: data.keyId };
+        }
+
+        async function encryptPayload(payload) {
+            const { key, keyId } = await fetchServerPublicKey();
+            const aesKey = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+            const rawAes = await window.crypto.subtle.exportKey('raw', aesKey);
+            const encKey = await window.crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, rawAes);
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+            const cipherBuf = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, aesKey, new TextEncoder().encode(JSON.stringify(payload)));
+            const bytes = new Uint8Array(cipherBuf);
+            const ct = bytes.slice(0, bytes.length - 16);
+            const tag = bytes.slice(bytes.length - 16);
+
+            const toB64 = b => {
+                let bin = '';
+                const u = new Uint8Array(b);
+                for (let i = 0; i < u.length; i++) bin += String.fromCharCode(u[i]);
+                return window.btoa(bin);
+            };
+
+            return {
+                keyId,
+                encryptedKey: toB64(encKey),
+                iv: toB64(iv),
+                ciphertext: toB64(ct),
+                tag: toB64(tag)
+            };
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById('register-form');
             if (form) {
-                form.addEventListener('submit', (e) => {
+                form.addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    window.location.href = '/dashboard.html';
+                    const submitBtn = form.querySelector('.btn-submit');
+                    const origBtnText = submitBtn.innerHTML;
+
+                    const fullname = document.getElementById('fullname')?.value.trim() || '';
+                    const age = document.getElementById('age')?.value || '';
+                    const gender = document.getElementById('gender')?.value || '';
+                    const email = document.getElementById('email')?.value.trim() || '';
+                    const role = document.getElementById('role')?.value.trim().toLowerCase() || 'user';
+                    const userid = document.getElementById('userid')?.value.trim() || '';
+                    const password = document.getElementById('password')?.value || '';
+
+                    if (!userid || userid.length < 3) {
+                        showRegisterAlert('User ID must be at least 3 characters long.');
+                        return;
+                    }
+                    if (!password || password.length < 8) {
+                        showRegisterAlert('Password must be at least 8 characters long.');
+                        return;
+                    }
+
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Encrypting & Registering...';
+
+                    try {
+                        const payload = {
+                            fullname,
+                            age,
+                            gender,
+                            email,
+                            role,
+                            userid,
+                            password,
+                            timestamp: Date.now(),
+                            nonce: window.crypto.randomUUID ? window.crypto.randomUUID() : (Math.random().toString(36).substring(2) + Date.now().toString(36))
+                        };
+
+                        const encrypted = await encryptPayload(payload);
+                        const res = await fetch('/api/auth/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(encrypted)
+                        });
+
+                        const data = await res.json();
+                        if (!res.ok || !data.success) {
+                            showRegisterAlert(data.error || 'Registration failed.');
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = origBtnText;
+                            return;
+                        }
+
+                        showRegisterAlert('Account registered successfully! Redirecting to login...', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/index.html?registered=1';
+                        }, 800);
+                    } catch (err) {
+                        showRegisterAlert(err.message || 'An unexpected error occurred.');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = origBtnText;
+                    }
                 });
             }
 
