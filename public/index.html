@@ -3,92 +3,336 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Vehicle Tracker - Premium Login</title>
+    <title>Future Soldier - Asset Tracking Monitor System (OCFA)</title>
     <!-- Modern Fonts (Local Same-Origin CSS) -->
     <link rel="stylesheet" href="/fonts.css">
-    <link rel="stylesheet" href="/login.css?v=5.0">
+    <link rel="stylesheet" href="/login.css?v=6.0">
     <style>
-        /* Immediate override to guarantee medium compact size without cache lag */
+        /* Exact layout and proportions matching the official Future Soldier reference */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body, html {
-            min-height: 100vh !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            margin: 0 !important;
-            padding: 10px 0 !important;
+            width: 100%;
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #1e293b;
+            color: #1f2937;
+            overflow-x: hidden;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 12px;
         }
+
+        .bg-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: -2;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.45);
+            z-index: -1;
+        }
+
         .login-wrapper {
-            max-width: 360px !important;
-            padding: 10px 14px !important;
-            margin: auto !important;
+            width: 100%;
+            max-width: 430px;
+            margin: auto;
+            z-index: 10;
         }
+
         .login-card {
-            padding: 16px 20px !important;
-            border-radius: 18px !important;
+            background: rgba(243, 246, 250, 0.94);
+            border-radius: 20px;
+            padding: 28px 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            text-align: left;
         }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
         .tcl-logo {
-            height: 38px !important;
-            max-width: 110px !important;
-            margin: 0 auto 4px auto !important;
-            display: block !important;
-            object-fit: contain !important;
+            height: 62px;
+            width: auto;
+            max-width: 130px;
+            margin: 0 auto 8px auto;
+            display: block;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
         }
-        .login-header h1 {
-            font-size: 1.25rem !important;
-            margin: 0 0 2px 0 !important;
+
+        .system-title {
+            color: #2e7d32;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.55rem;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.02em;
         }
-        .login-header p {
-            font-size: 0.78rem !important;
+
+        .system-subtitle {
+            color: #4b5563;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin: 0 0 14px 0;
+            line-height: 1.35;
         }
+
+        .login-heading {
+            color: #111827;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .login-alert {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            line-height: 1.35;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            font-weight: 500;
+        }
+
+        .login-alert.alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+        }
+
+        .login-alert.alert-warning {
+            background-color: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #b45309;
+        }
+
+        .login-alert.alert-success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+        }
+
         .form-group {
-            margin-bottom: 6px !important;
-            gap: 2px !important;
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
+
+        .form-group label {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .required-star {
+            color: #ef4444;
+            margin-left: 2px;
+            font-weight: bold;
+        }
+
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
         .input-wrapper input {
-            height: 32px !important;
-            padding: 4px 10px !important;
-            font-size: 0.86rem !important;
+            width: 100%;
+            height: 40px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: #111827;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .captcha-row {
-            display: flex !important;
-            align-items: center !important;
-            gap: 6px !important;
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.15);
         }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            z-index: 2;
+        }
+
+        .password-toggle:hover {
+            color: #111827;
+        }
+
+        /* Captcha Box */
         .captcha-box {
-            height: 32px !important;
-            width: 140px !important;
-            flex-shrink: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 4px 10px;
+            height: 46px;
+            margin-bottom: 8px;
         }
+
         .captcha-preview {
-            height: 28px !important;
+            flex: 1;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #ffffff;
         }
+
+        .captcha-preview svg {
+            max-width: 100%;
+            height: 100%;
+            display: block;
+        }
+
         .captcha-refresh-btn {
-            width: 24px !important;
-            height: 24px !important;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            border: none;
+            background: transparent;
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, color 0.2s;
+            flex-shrink: 0;
         }
-        .captcha-input-wrap input {
-            height: 32px !important;
-            font-size: 0.88rem !important;
+
+        .captcha-refresh-btn:hover {
+            color: #111827;
+            transform: rotate(45deg);
         }
+
+        .captcha-refresh-btn.rotating svg {
+            animation: spin 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .captcha-loading {
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+
         .btn-submit {
-            height: 34px !important;
-            padding: 6px 12px !important;
-            font-size: 0.92rem !important;
-            margin-top: 4px !important;
+            width: 100%;
+            height: 42px;
+            border-radius: 6px;
+            border: none;
+            background-color: #cbd5e1;
+            color: #475569;
+            font-family: inherit;
+            font-size: 0.98rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
-        .divider {
-            margin: 5px 0 !important;
-            font-size: 0.7rem !important;
+
+        .btn-submit:hover {
+            background-color: #2e7d32;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.25);
         }
-        .sso-btn {
-            height: 30px !important;
-            padding: 4px 8px !important;
-            font-size: 0.78rem !important;
+
+        .btn-submit:active {
+            transform: translateY(1px);
         }
-        .footer-text {
-            margin-top: 6px !important;
-            font-size: 0.76rem !important;
+
+        .btn-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .login-footer {
+            margin-top: 16px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .register-text {
+            font-size: 0.88rem;
+            color: #4b5563;
+        }
+
+        .register-text a, .forgot-link a {
+            color: #2e7d32;
+            text-decoration: none;
+            font-weight: 600;
+            transition: text-decoration 0.2s;
+        }
+
+        .register-text a:hover, .forgot-link a:hover {
+            text-decoration: underline;
+        }
+
+        .forgot-link {
+            font-size: 0.88rem;
         }
     </style>
 </head>
@@ -99,26 +343,17 @@
     <div class="bg-overlay"></div>
 
     <div class="login-wrapper">
-        <div class="logo-container">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path>
-                    <path d="M12 6.5l-3 6.5 3-1.5 3 1.5-3-6.5z"></path>
-                </svg>
-            </div>
-            <div class="logo-text">GPS Vehicle Tracker</div>
-        </div>
-
         <div class="login-card">
             <div class="login-header">
                 <img src="/tcl-logo.png" alt="TCL Logo" class="tcl-logo" />
-                <h1>Welcome Back</h1>
-                <p>Log in to access your dashboard</p>
+                <h1 class="system-title">Future Soldier</h1>
+                <p class="system-subtitle">Asset Tracking Monitor System (OCFA)</p>
+                <h2 class="login-heading">Login</h2>
             </div>
 
             <!-- Dynamic Feedback & Security Alert Banner -->
             <div id="login-alert" class="login-alert" style="display: none;" role="alert">
-                <svg id="alert-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg id="alert-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="8" x2="12" y2="12"></line>
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -128,79 +363,56 @@
 
             <form id="login-form">
                 <div class="form-group">
-                    <label for="username">User Login</label>
+                    <label for="username">User Login ID<span class="required-star">*</span></label>
                     <div class="input-wrapper">
-                        <input type="text" id="username" placeholder="e.g. admin" required autocomplete="username">
+                        <input type="text" id="username" placeholder="" required autocomplete="username">
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 6px;">
-                    <label for="password">Password</label>
+                <div class="form-group">
+                    <label for="password">Password <span class="required-star">*</span></label>
                     <div class="input-wrapper">
-                        <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password" style="padding-right: 40px;">
+                        <input type="password" id="password" placeholder="" required autocomplete="current-password" style="padding-right: 40px;">
                         <button type="button" class="password-toggle" id="password-toggle-btn" aria-label="Toggle password visibility">
-                            <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path>
                                 <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                         </button>
                     </div>
-                    <div class="password-meta">
-                        <a href="#" class="forgot-password">Forgot password?</a>
-                    </div>
                 </div>
 
-                <!-- Professional Security Verification CAPTCHA (Compact Inline Row) -->
+                <!-- Professional Security Verification CAPTCHA -->
                 <div class="form-group captcha-group">
-                    <div class="captcha-label-row">
-                        <label for="captcha-input">Security Verification</label>
-                        <span class="captcha-subtext">Case-insensitive</span>
+                    <label for="captcha-input">Captcha <span class="required-star">*</span></label>
+                    <div class="captcha-box">
+                        <div class="captcha-preview" id="captcha-preview" title="CAPTCHA challenge">
+                            <span class="captcha-loading">Loading...</span>
+                        </div>
+                        <button type="button" class="captcha-refresh-btn" id="captcha-refresh-btn" aria-label="Refresh challenge" title="Refresh">
+                            <svg id="refresh-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                            </svg>
+                        </button>
                     </div>
-                    <div class="captcha-row">
-                        <div class="captcha-box">
-                            <div class="captcha-preview" id="captcha-preview" title="CAPTCHA challenge">
-                                <span class="captcha-loading">Loading...</span>
-                            </div>
-                            <button type="button" class="captcha-refresh-btn" id="captcha-refresh-btn" aria-label="Refresh verification challenge" title="Get a new verification challenge">
-                                <svg id="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="input-wrapper captcha-input-wrap">
-                            <input type="text" id="captcha-input" placeholder="Enter code" required autocomplete="off" maxlength="8" spellcheck="false" autocapitalize="characters">
-                        </div>
+                    <div class="input-wrapper">
+                        <input type="text" id="captcha-input" placeholder="Enter the code above" required autocomplete="off" maxlength="8" spellcheck="false" autocapitalize="characters">
                     </div>
                 </div>
 
                 <button type="submit" class="btn-submit" id="btn-submit">
-                    <span id="btn-submit-text">Sign In</span>
-                    <svg id="btn-submit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
+                    <span id="btn-submit-text">Login</span>
                     <div id="btn-submit-spinner" class="btn-spinner" style="display: none;"></div>
                 </button>
             </form>
 
-            <div class="divider">or</div>
-
-            <button type="button" class="sso-btn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Continue with Google
-            </button>
-        </div>
-        
-        <div class="footer-text">
-            Don't have an account? <a href="/register.html">Register now</a>
+            <div class="login-footer">
+                <p class="register-text">New personnel? <a href="/register.html">Register</a></p>
+                <p class="forgot-link"><a href="#" id="forgot-password-link">Forgot Password?</a></p>
+            </div>
         </div>
     </div>
 
-    <script src="/login.js?v=5.0"></script>
+    <script src="/login.js?v=6.0"></script>
 </body>
 </html>

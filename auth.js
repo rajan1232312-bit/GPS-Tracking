@@ -155,11 +155,11 @@ function generateCaptchaCode() {
 }
 
 function generateCaptchaSvg(text) {
-    const width = 180;
-    const height = 52;
-    const colors = ['#a3e635', '#38bdf8', '#f43f5e', '#fbbf24', '#c084fc', '#34d399', '#f97316'];
+    const width = 160;
+    const height = 40;
+    const colors = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0284c7', '#ea580c'];
 
-    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="border-radius: 12px; background: #131722; user-select: none; display: block;">`;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="background: #ffffff; user-select: none; display: block; border-radius: 4px;">`;
 
     // Anti-OCR distortion lines (cubic bezier curves)
     for (let i = 0; i < 5; i++) {
@@ -173,30 +173,30 @@ function generateCaptchaSvg(text) {
         const cy2 = Math.floor(Math.random() * height);
         const stroke = colors[Math.floor(Math.random() * colors.length)];
         const strokeWidth = (Math.random() * 1.5 + 1).toFixed(1);
-        const opacity = (Math.random() * 0.35 + 0.25).toFixed(2);
+        const opacity = (Math.random() * 0.4 + 0.35).toFixed(2);
         svg += `<path d="M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}" stroke="${stroke}" stroke-width="${strokeWidth}" fill="none" opacity="${opacity}" />`;
     }
 
     // Anti-OCR noise particles
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < 25; i++) {
         const cx = Math.floor(Math.random() * width);
         const cy = Math.floor(Math.random() * height);
-        const r = (Math.random() * 1.6 + 0.6).toFixed(1);
+        const r = (Math.random() * 1.5 + 0.5).toFixed(1);
         const fill = colors[Math.floor(Math.random() * colors.length)];
-        const opacity = (Math.random() * 0.4 + 0.2).toFixed(2);
+        const opacity = (Math.random() * 0.4 + 0.25).toFixed(2);
         svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" opacity="${opacity}" />`;
     }
 
     // Distorted individual glyphs
-    const charSpacing = (width - 30) / text.length;
+    const charSpacing = (width - 24) / text.length;
     for (let i = 0; i < text.length; i++) {
         const ch = text[i];
-        const x = 20 + i * charSpacing + (Math.random() * 6 - 3);
-        const y = 35 + (Math.random() * 8 - 4);
-        const angle = Math.floor(Math.random() * 36 - 18);
-        const fontSize = Math.floor(Math.random() * 5 + 26);
+        const x = 16 + i * charSpacing + (Math.random() * 4 - 2);
+        const y = 28 + (Math.random() * 6 - 3);
+        const angle = Math.floor(Math.random() * 32 - 16);
+        const fontSize = Math.floor(Math.random() * 4 + 22);
         const color = colors[(i * 2 + Math.floor(Math.random() * 2)) % colors.length];
-        svg += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="'Courier New', Courier, monospace" font-weight="bold" font-size="${fontSize}px" fill="${color}" transform="rotate(${angle}, ${x.toFixed(1)}, ${y.toFixed(1)})" text-anchor="middle" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.5))">${ch}</text>`;
+        svg += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="'Courier New', Courier, monospace" font-weight="bold" font-size="${fontSize}px" fill="${color}" transform="rotate(${angle}, ${x.toFixed(1)}, ${y.toFixed(1)})" text-anchor="middle" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.25))">${ch}</text>`;
     }
 
     svg += `</svg>`;
