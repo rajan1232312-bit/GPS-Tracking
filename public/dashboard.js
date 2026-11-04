@@ -1238,6 +1238,7 @@
             try {
                 const res = await fetch('/api/devices');
                 const devices = await res.json();
+                window.latestDevicesList = devices;
                 const list = document.getElementById('sidebar-device-list');
                 const tableBody = document.getElementById('devices-table-body');
                 
@@ -1591,12 +1592,14 @@
         const detailsPanel = document.getElementById('device-details-panel');
         document.getElementById('close-details-btn').addEventListener('click', () => {
             detailsPanel.classList.remove('active');
+            clearActiveDeviceHighlight();
         });
 
         // Clicking anywhere on map dismisses details and history panels to keep map view full and clean
         map.on('click', () => {
             if (detailsPanel && detailsPanel.classList.contains('active')) {
                 detailsPanel.classList.remove('active');
+                clearActiveDeviceHighlight();
             }
             if (typeof historyPanel !== 'undefined' && historyPanel && historyPanel.classList.contains('active')) {
                 historyPanel.classList.remove('active');
@@ -1608,6 +1611,123 @@
         });
 
         let activeDeviceUid = null;
+
+        function clearActiveDeviceHighlight() {
+            activeDeviceUid = null;
+            if (window.deviceMarkers) {
+                Object.values(window.deviceMarkers).forEach(m => {
+                    if (m && typeof m.setZIndexOffset === 'function') m.setZIndexOffset(0);
+                    const el = m && typeof m.getElement === 'function' ? m.getElement() : null;
+                    if (el) el.classList.remove('marker-active-beacon');
+                });
+            }
+            document.querySelectorAll('.device-item').forEach(item => {
+                item.classList.remove('active-tracker');
+            });
+        }
+
+        /**
+         * Precision Tactical Pointer Node Focus Architecture:
+         * 1. Dynamic Zoom Floor: Automatically sets minimum zoom to Level 18 (~0.6m/px building & lane resolution).
+         *    Preserves existing higher zoom if user is already at closer levels (19, 20).
+         * 2. Viewport Offset Calculation: Compensates for floating sidebar (left: ~360px) and details panel (right: ~380px),
+         *    ensuring the pointer marker lands dead-center in the unobstructed viewable map canvas.
+         * 3. Radar Beacon Pulse: Attaches animated glowing ripples and elevates marker z-index to 10000.
+         * 4. Bi-directional Synchronization: Seamlessly synchronizes active state between sidebar list and map markers.
+         */
+        function focusDeviceNode(uid, options = {}) {
+            if (!uid) return;
+
+            let marker = window.deviceMarkers && window.deviceMarkers[uid];
+            let lat = null, lon = null;
+
+            if (marker) {
+                const pos = marker.getLatLng();
+                lat = pos.lat;
+                lon = pos.lng;
+            } else if (window.latestDevicesList) {
+                const dev = window.latestDevicesList.find(d => d.device_uid === uid);
+                if (dev && dev.last_lat != null && dev.last_lon != null) {
+                    lat = dev.last_lat;
+                    lon = dev.last_lon;
+                }
+            }
+
+            // Guard against unlocalized or empty GPS coordinates
+            if (lat == null || lon == null || (lat === 0 && lon === 0)) {
+                console.warn(`[Tracking] Device ${uid} does not have valid GPS coordinates to focus.`);
+                return;
+            }
+
+            // 1. Dynamic Zoom Target (Zoom 18 default for tactical precision, preserving higher zoom if already close)
+            const currentZoom = Math.round(map.getZoom());
+            const maxAllowedZoom = typeof getActiveMaxZoom === 'function' ? getActiveMaxZoom() : 22;
+            const targetZoom = Math.min(Math.max(currentZoom, 18), maxAllowedZoom);
+
+            // 2. Viewport Offset Calculation (Compensates for Sidebar and Details Panel overlays)
+            const sidebar = document.getElementById('main-sidebar');
+            const detailsPanel = document.getElementById('device-details-panel');
+
+            const isDesktop = window.innerWidth > 1024;
+            const isSidebarVisible = isDesktop && sidebar && !sidebar.classList.contains('collapsed');
+            const isDetailsVisible = isDesktop && detailsPanel && detailsPanel.classList.contains('active');
+
+            const leftWidth = isSidebarVisible ? (sidebar.offsetWidth + 24) : 0;
+            const rightWidth = isDetailsVisible ? (detailsPanel.offsetWidth + 24) : 0;
+
+            // Shift point in screen space so node centers in the clear corridor
+            const offsetX = (leftWidth - rightWidth) / 2;
+            let offsetY = 0;
+
+            // On mobile (<768px), details panel is a bottom drawer (~45vh)
+            if (window.innerWidth <= 768 && detailsPanel && detailsPanel.classList.contains('active')) {
+                offsetY = (detailsPanel.offsetHeight || 280) / 4;
+            }
+
+            // Convert LatLng to projected pixels at target zoom, apply offset, and convert back
+            const targetPoint = map.project([lat, lon], targetZoom);
+            const adjustedPoint = L.point(targetPoint.x - offsetX, targetPoint.y - offsetY);
+            const adjustedLatLng = map.unproject(adjustedPoint, targetZoom);
+
+            // 3. Smooth Camera Flight
+            const duration = options.duration !== undefined ? options.duration : 1.2;
+            map.flyTo(adjustedLatLng, targetZoom, {
+                animate: true,
+                duration: duration,
+                easeLinearity: 0.25,
+                noMoveStart: true
+            });
+
+            // 4. Radar Beacon Pulse & Z-Index Elevation
+            if (window.deviceMarkers) {
+                Object.values(window.deviceMarkers).forEach(m => {
+                    if (m && typeof m.setZIndexOffset === 'function') m.setZIndexOffset(0);
+                    const el = m && typeof m.getElement === 'function' ? m.getElement() : null;
+                    if (el) el.classList.remove('marker-active-beacon');
+                });
+            }
+
+            if (marker) {
+                if (typeof marker.setZIndexOffset === 'function') marker.setZIndexOffset(10000);
+                const el = marker.getElement();
+                if (el) {
+                    el.classList.add('marker-active-beacon');
+                }
+                setTimeout(() => {
+                    if (marker.openTooltip) marker.openTooltip();
+                }, Math.round(duration * 950));
+            }
+
+            // 5. Sidebar Card Selection State
+            document.querySelectorAll('.device-item').forEach(item => {
+                item.classList.remove('active-tracker');
+            });
+            const activeSidebarItem = document.getElementById(`sidebar-dev-${uid}`);
+            if (activeSidebarItem) {
+                activeSidebarItem.classList.add('active-tracker');
+                activeSidebarItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
 
         async function openDeviceDetails(uid) {
             activeDeviceUid = uid;
@@ -1623,6 +1743,7 @@
 
                 const res = await fetch('/api/devices');
                 const devices = await res.json();
+                window.latestDevicesList = devices;
                 const device = devices.find(d => d.device_uid === uid);
                 
                 if(!device) return;
@@ -1708,19 +1829,8 @@
                 // Fire off geocoding if we have location
                 if(device.last_lat != null && device.last_lon != null) {
                     getAddressFromCoords(device.last_lat, device.last_lon, 'details-last-seen-loc');
-                    
-                    // Professional cinematic fly-to animation for smooth zooming
-                    map.flyTo([device.last_lat, device.last_lon], 16, {
-                        animate: true,
-                        duration: 1.5
-                    });
-                    
-                    // Pop open the tooltip slightly after the flight finishes
-                    if (window.deviceMarkers && window.deviceMarkers[uid]) {
-                        setTimeout(() => {
-                            window.deviceMarkers[uid].openTooltip();
-                        }, 1500);
-                    }
+                    // Precision Tactical Zoom with Viewport Offset and Radar Beacon
+                    focusDeviceNode(uid, { duration: 1.2 });
                 }
                 
             } catch (err) {
