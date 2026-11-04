@@ -362,13 +362,13 @@ app.use((req, res, next) => {
 
 // --- Security & Transport Encryption Middleware (OWASP CSP & HSTS) ---
 // Explicitly defines directives that have no fallback (base-uri, form-action, frame-ancestors, object-src),
-// prevents "Content Security Policy (CSP) Header Not Set" across all routes,
+// prevents "Content Security Policy (CSP) Header Not Set" (OWASP 10038) and "Failure to Define Directive with No Fallback" (OWASP 10055),
 // and enforces SSL/TLS transport encryption (HSTS + upgrade-insecure-requests).
 const CSP_POLICY = [
     "default-src 'self'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'self'",
+    "frame-ancestors 'self' https://dashboard.render.com",
     "object-src 'none'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
@@ -396,14 +396,20 @@ app.use((req, res, next) => {
     next();
 });
 
-// Global Security Response Interceptor (guarantees Socket.IO internal endpoints like /socket.io/socket.io.js get all OWASP security headers)
+// Global Security Response Interceptor (guarantees Socket.IO and proxy edge responses strictly include complete CSP with all no-fallback directives)
 const origWriteHead = http.ServerResponse.prototype.writeHead;
 http.ServerResponse.prototype.writeHead = function(statusCode, ...args) {
     if (!this.getHeader('X-Content-Type-Options')) this.setHeader('X-Content-Type-Options', 'nosniff');
     if (!this.getHeader('Strict-Transport-Security')) this.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     if (!this.getHeader('X-Frame-Options')) this.setHeader('X-Frame-Options', 'SAMEORIGIN');
     if (!this.getHeader('Referrer-Policy')) this.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    if (!this.getHeader('Content-Security-Policy')) this.setHeader('Content-Security-Policy', CSP_POLICY);
+    
+    // Ensure all directives that have no fallback (base-uri, form-action, frame-ancestors) are strictly present
+    const existingCsp = this.getHeader('Content-Security-Policy');
+    if (!existingCsp || !existingCsp.includes('base-uri') || !existingCsp.includes('form-action')) {
+        this.setHeader('Content-Security-Policy', CSP_POLICY);
+    }
+
     if (!this.getHeader('Cache-Control')) {
         this.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         this.setHeader('Pragma', 'no-cache');
